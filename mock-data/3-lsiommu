@@ -1,0 +1,31 @@
+IOMMU Group 0 00:00.0 Host bridge [0600]: Intel Corporation 4th Gen Core Processor DRAM Controller [8086:0c00] (rev 06)
+IOMMU Group 10 00:1c.6 PCI bridge [0604]: Intel Corporation 9 Series Chipset Family PCI Express Root Port 7 [8086:8c9c] (rev d0)
+IOMMU Group 11 00:1c.7 PCI bridge [0604]: Intel Corporation 9 Series Chipset Family PCI Express Root Port 8 [8086:8c9e] (rev d0)
+IOMMU Group 12 00:1d.0 USB controller [0c03]: Intel Corporation 9 Series Chipset Family USB EHCI Controller #1 [8086:8ca6]
+IOMMU Group 13 00:1f.0 ISA bridge [0601]: Intel Corporation 9 Series Chipset Family Z97 LPC Controller [8086:8cc4]
+IOMMU Group 13 00:1f.2 SATA controller [0106]: Intel Corporation 9 Series Chipset Family SATA Controller [AHCI Mode] [8086:8c82]
+IOMMU Group 13 00:1f.3 SMBus [0c05]: Intel Corporation 9 Series Chipset Family SMBus Controller [8086:8ca2]
+IOMMU Group 14 04:00.0 Network controller [0280]: Qualcomm Atheros QCA6174 802.11ac Wireless Network Adapter [168c:003e] (rev 20)
+IOMMU Group 15 05:00.0 Ethernet controller [0200]: Qualcomm Atheros Killer E220x Gigabit Ethernet Controller [1969:e091] (rev 13)
+IOMMU Group 16 06:00.0 USB controller [0c03]: ASMedia Technology Inc. ASM1042A USB 3.0 Host Controller [1b21:1142]
+IOMMU Group 17 07:00.0 PCI bridge [0604]: ASMedia Technology Inc. Device [1b21:1184]
+IOMMU Group 18 08:01.0 PCI bridge [0604]: ASMedia Technology Inc. Device [1b21:1184]
+IOMMU Group 19 08:03.0 PCI bridge [0604]: ASMedia Technology Inc. Device [1b21:1184]
+IOMMU Group 1 00:01.0 PCI bridge [0604]: Intel Corporation Xeon E3-1200 v3/4th Gen Core Processor PCI Express x16 Controller [8086:0c01] (rev 06)
+IOMMU Group 1 00:01.2 PCI bridge [0604]: Intel Corporation Xeon E3-1200 v3/4th Gen Core Processor PCI Express x4 Controller [8086:0c09] (rev 06)
+IOMMU Group 1 01:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Tahiti XT [Radeon HD 7970/8970 OEM / R9 280X] [1002:6798]
+IOMMU Group 1 01:00.1 Audio device [0403]: Advanced Micro Devices, Inc. [AMD/ATI] Tahiti XT HDMI Audio [Radeon HD 7970 Series] [1002:aaa0]
+IOMMU Group 1 02:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Tahiti XT [Radeon HD 7970/8970 OEM / R9 280X] [1002:6798]
+IOMMU Group 1 02:00.1 Audio device [0403]: Advanced Micro Devices, Inc. [AMD/ATI] Tahiti XT HDMI Audio [Radeon HD 7970 Series] [1002:aaa0]
+IOMMU Group 20 08:05.0 PCI bridge [0604]: ASMedia Technology Inc. Device [1b21:1184]
+IOMMU Group 21 08:07.0 PCI bridge [0604]: ASMedia Technology Inc. Device [1b21:1184]
+IOMMU Group 21 0c:00.0 Ethernet controller [0200]: Intel Corporation 82574L Gigabit Network Connection [8086:10d3]
+IOMMU Group 22 0d:00.0 SATA controller [0106]: ASMedia Technology Inc. ASM1062 Serial ATA Controller [1b21:0612] (rev 01)
+IOMMU Group 2 00:14.0 USB controller [0c03]: Intel Corporation 9 Series Chipset Family USB xHCI Controller [8086:8cb1]
+IOMMU Group 3 00:16.0 Communication controller [0780]: Intel Corporation 9 Series Chipset Family ME Interface #1 [8086:8cba]
+IOMMU Group 4 00:1a.0 USB controller [0c03]: Intel Corporation 9 Series Chipset Family USB EHCI Controller #2 [8086:8cad]
+IOMMU Group 5 00:1b.0 Audio device [0403]: Intel Corporation 9 Series Chipset Family HD Audio Controller [8086:8ca0]
+IOMMU Group 6 00:1c.0 PCI bridge [0604]: Intel Corporation 9 Series Chipset Family PCI Express Root Port 1 [8086:8c90] (rev d0)
+IOMMU Group 7 00:1c.2 PCI bridge [0604]: Intel Corporation 9 Series Chipset Family PCI Express Root Port 3 [8086:8c94] (rev d0)
+IOMMU Group 8 00:1c.3 PCI bridge [0604]: Intel Corporation 9 Series Chipset Family PCI Express Root Port 4 [8086:8c96] (rev d0)
+IOMMU Group 9 00:1c.4 PCI bridge [0604]: Intel Corporation 9 Series Chipset Family PCI Express Root Port 5 [8086:8c98] (rev d0)

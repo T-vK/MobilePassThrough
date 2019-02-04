@@ -1,0 +1,9 @@
+/logs
+/vm-files/vbios-roms
+/vm-files/vmshare
+/vm-files/*.fd
+/vm-files/*.iso
+/vm-files/*.img
+/vm-files/MAC_ADDRESS.txt
+.*.swp
+.*.swo

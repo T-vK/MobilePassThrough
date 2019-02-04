@@ -1,0 +1,4 @@
+Bus info          Device      Class          Description
+========================================================
+pci@0000:01:00.0              display        GK107GLM [Quadro K2000M]
+pci@0000:00:02.0              display        3rd Gen Core processor Graphics Controller

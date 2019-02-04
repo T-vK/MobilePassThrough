@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+PROJECT_DIR="${SCRIPT_DIR}/.."
+UTILS_DIR="${PROJECT_DIR}/utils"
+DISTRO=$("${UTILS_DIR}/distro-info")
+DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+
+source "$(dirname "$0")/$DISTRO_UTILS_DIR/kernel-param-utils"
+
+echo "Adding kernel parameters..."
+# Docs: https://www.kernel.org/doc/Documentation/admin-guide/kernel-parameters.txt
+# More docs: https://lwn.net/Articles/252826/
+# https://www.kernel.org/doc/Documentation/x86/x86_64/boot-options.txt
+echo "Adding kernel parameters to enable IOMMU on Intel/AMD CPUs..."
+addKernelParam "iommu=1" # '1' is not a documented option. stop confusing me wendell! Maybe the "force" option should be used instead?
+addKernelParam "amd_iommu=on" # 'on' is not a docuemnted option for this parameter either! This is insanely confusing!
+addKernelParam "intel_iommu=on" # enable Intel VT-D   ;# using "intel_iommu=on,igfx_off" iGPU gets no iommu group...
+echo "Adding a kernel parameter to prevent bluescreens when a VM does MSR reads / writes directly..."
+addKernelParam "kvm.ignore_msrs=1"
+echo "Adding a kernel parameter to tell dracut to load vfio-pci first..."
+addKernelParam "rd.driver.pre=vfio-pci" # tell dracut to load vfio-pci first
+
+# echo "Adding a kernel parameter to add skylake support..."
+# addKernelParam "i915.preliminary_hw_support=1" # add skylake support; probably only necessary with older kernels
+# echo "Adding a kernel parameter that may fix 'fix /dev/vfio/1 not found' errors..."
+# addKernelParam "pcie_acs_override=downstream" # fix /dev/vfio/1 not found error # shouldn't be necessary
+#addKernelParam "acpi_osi=!" # may fix problems with AMI style UEFIs
+#addKernelParam "acpi_osi='Windows 2009'" # may fix problems with AMI style UEFIs
+
+echo "TODO: check if /etc/dracut.conf.d/vfio.conf is necessary / make sure it onyl happens once"
+#echo "additional vfio stub driver stuff"
+#echo 'add_drivers+="vfio vfio_iommu_type1 vfio_pci' >> /etc/dracut.conf.d/vfio.conf
+
+echo "(Re)building initramfs for the current kernel..."
+sudo dracut -f --kver `uname -r`
+
+echo "Applying the kernel parameter changes..."
+applyKernelParamChanges

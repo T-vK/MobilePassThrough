@@ -1,0 +1,4 @@
+Bus info          Device      Class          Description
+========================================================
+pci@0000:01:00.0              display        GM204 [GeForce GTX 970]
+pci@0000:00:02.0              display        Xeon E3-1200 v3/4th Gen Core Processor Integrated Graphics Controller 

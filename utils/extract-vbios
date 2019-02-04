@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+PROJECT_DIR="${SCRIPT_DIR}/.."
+UTILS_DIR="${PROJECT_DIR}/utils"
+DISTRO=$("${UTILS_DIR}/distro-info")
+DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+
+if [ -z "$(which optirun)" ]; then
+    USE_BUMBLEBEE=false
+    OPTIRUN_PREFIX=""
+else
+    USE_BUMBLEBEE=true
+    OPTIRUN_PREFIX="optirun "
+fi
+
+function extractVbios() {
+    if [ ! -f "${UTILS_DIR}/nvflash_linux" ]; then
+	NVFLASH_DOWNLOAD_ID=$(curl https://www.techpowerup.com/download/nvidia-nvflash/ | grep '_linux.zip' -A 5 | grep 'name="id" value="' | cut -d '"' -f6)
+	wget --post-data "id=${NVFLASH_DOWNLOAD_ID}&server_id=2" https://www.techpowerup.com/download/nvidia-nvflash/ -O ${UTILS_DIR}/nvidia-nvflash.zip
+	unzip ${UTILS_DIR}/nvidia-nvflash.zip -d ./
+	rm -f ${UTILS_DIR}/nvidia-nvflash.zip
+	chmod +x ${UTILS_DIR}/nvflash_linux
+    fi
+    mkdir -p ./vbios-roms
+    sudo ${OPTIRUN_PREFIX}${UTILS_DIR}/nvflash_linux --save ${VM_FILES_DIR}/vbios-roms/vbios.rom
+}
+
+echo "Attempting to extract the VBIOS ROM of the Nvidia GPU"
+echo "This will probably fail. If you know how to fix it please open an issue and tell me."
+extractVbios

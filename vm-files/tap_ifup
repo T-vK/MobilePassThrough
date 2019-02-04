@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Set to the name of your tap device
+TAP=tap0
+
+# Network information
+NETWORK=192.168.99.0
+NETMASK=255.255.255.0
+GATEWAY=192.168.99.1
+DHCPRANGE=192.168.99.2,192.168.99.10
+
+check_tap() {
+    if ip link show | grep $TAP > /dev/null; then
+        return
+    else
+        exit 1
+    fi
+}
+
+enable_ip_forward() {
+    echo 1 | dd of=/proc/sys/net/ipv4/ip_forward > /dev/null
+}
+
+start_dnsmasq(){
+    dnsmasq \
+        --strict-order \
+        --interface=$TAP \
+        --listen-address=$GATEWAY \
+        --bind-interfaces \
+        --dhcp-range=$DHCPRANGE \
+        --dhcp-no-override \
+        --pid-file=/var/run/qemu-dnsmasq-$TAP.pid
+}
+
+add_iptable_rules() {
+iptables-restore -n <<EOF
+*nat
+-A POSTROUTING -s $NETWORK/$NETMASK -j MASQUERADE
+COMMIT
+
+*filter
+-A INPUT -i $TAP -s $NETWORK/$NETMASK -d $NETWORK/$NETMASK -j ACCEPT
+# Allow port 67 for DHCP, port 53 for dnsmasq
+-A INPUT -i $TAP -p tcp -m tcp --dport 67 -j ACCEPT 
+-A INPUT -i $TAP -p udp -m udp --dport 67 -j ACCEPT 
+-A INPUT -i $TAP -p tcp -m tcp --dport 53 -j ACCEPT 
+-A INPUT -i $TAP -p udp -m udp --dport 53 -j ACCEPT
+
+# Connect the external network
+-A FORWARD -i $TAP -o $TAP -j ACCEPT
+-A FORWARD -s $NETWORK/$NETMASK -i $TAP -j ACCEPT 
+-A FORWARD -s $GATEWAY -i $TAP -j ACCEPT
+-A FORWARD -d $NETWORK/$NETMASK -o $TAP -m state --state RELATED,ESTABLISHED -j ACCEPT
+COMMIT
+EOF
+}
+
+start_tap() {
+    enable_ip_forward
+    check_tap
+
+    # Flush old config and set new config
+    ip addr flush dev $TAP
+    ip addr add $GATEWAY/$NETMASK dev $TAP
+    ip link set $TAP up
+
+    start_dnsmasq
+
+    add_iptable_rules
+}
+
+start_tap

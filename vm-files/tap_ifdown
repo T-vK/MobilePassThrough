@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# tap device name
+TAP=tap0
+
+# Network information
+NETWORK=192.168.99.0
+NETMASK=255.255.255.0
+GATEWAY=192.168.99.1
+
+DNSMASQPID=$(cat "/var/run/qemu-dnsmasq-$TAP.pid")
+
+if [ ! "$DNSMASQPID" = "" ]; then
+    kill -s SIGTERM $DNSMASQPID && echo "DNSMASQ terminated"
+fi
+
+ip link set $TAP down
+ip addr flush dev $TAP
+
+iptables -t nat -D POSTROUTING -s $NETWORK/$NETMASK -j MASQUERADE
+iptables -D INPUT -i $TAP -s $NETWORK/$NETMASK -d $NETWORK/$NETMASK -j ACCEPT
+iptables -D INPUT -i $TAP -p tcp -m tcp --dport 67 -j ACCEPT
+iptables -D INPUT -i $TAP -p udp -m udp --dport 67 -j ACCEPT
+iptables -D INPUT -i $TAP -p tcp -m tcp --dport 53 -j ACCEPT
+iptables -D INPUT -i $TAP -p udp -m udp --dport 53 -j ACCEPT
+iptables -D FORWARD -i $TAP -o $TAP -j ACCEPT
+iptables -D FORWARD -s $NETWORK/$NETMASK -i $TAP -j ACCEPT
+iptables -D FORWARD -s $GATEWAY -i $TAP -j ACCEPT
+iptables -D FORWARD -d $NETWORK/$NETMASK -o $TAP -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+echo 0 | dd of=/proc/sys/net/ipv4/ip_forward > /dev/null && echo "ip_forward disabled"

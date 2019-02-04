@@ -1,0 +1,4 @@
+  Bus info          Device      Class       Description
+=====================================================
+pci@0000:26:00.0              display     Ellesmere [Radeon RX 470/480/570/570X/580/580X]
+pci@0000:27:00.0              display     Ellesmere [Radeon RX 470/480/570/570X/580/580X]

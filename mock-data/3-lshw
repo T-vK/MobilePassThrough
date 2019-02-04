@@ -1,0 +1,4 @@
+Bus info          Device      Class       Description
+=====================================================
+pci@0000:01:00.0              display     Tahiti XT [Radeon HD 7970/8970 OEM / R9 280X]
+pci@0000:02:00.0              display     Tahiti XT [Radeon HD 7970/8970 OEM / R9 280X]
