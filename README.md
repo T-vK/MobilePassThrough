@@ -41,42 +41,42 @@ To achieve that goal I have created a collection of scripts that automate:
 
 ## Requirements to get GPU-passthrough to work on mobile
 
-- [ ] Device needs to be (mostly) compatible with Linux.
-    Note: most Laptops should be these days
+- [ ] Device needs to be (mostly) compatible with Linux.  
+    Note: most Laptops should be these days  
 
-- [ ] At least two GPUs (typically Intel's iGPU and an Nvidia GPU)
-    Note: If you have Thunderbolt 3, you might be able to use an eGPU. See: https://egpu.io
-    Note2: Theoretically it's possible to get this to work with only one GPU, but then you wouldn't be able to use your host system directly while running the VM, not the mention like 50 other issues you'll run into.
+- [ ] At least two GPUs (typically Intel's iGPU and an Nvidia GPU)  
+    Note: If you have Thunderbolt 3, you might be able to use an eGPU. See: https://egpu.io  
+    Note2: Theoretically it's possible to get this to work with only one GPU, but then you wouldn't be able to use your host system directly while running the VM, not the mention like 50 other issues you'll run into.  
 
-- [ ] CPU needs to support `Intel VT-x` / `AMD-V`
-    Note: Unless your notebook is like 10 years old, the CPU should support this.
-    Note2: If it supports `Intel VT-d` / AMD's `IOMMU` it should automatically also support `Intel VT-x` / `AMD-V`.
-- [ ] Chipset to support `Intel VT-x` / `AMD-V`
-    Note: Unless your notebook is like 10 years old, it should support this.
-    Note2: If it supports `Intel VT-d` / AMD's `IOMMU` it should automatically also support `Intel VT-x` / `AMD-V`.
-- [ ] BIOS/UEFI option to enable `Intel VT-x` / `AMD-V` must exist or it has to be enabled
-    Note: Unless your notebook is like 10 years old, it should support this.
-    Note2: If it supports `Intel VT-d` / AMD's `IOMMU` it should automatically also support `Intel VT-x` / `AMD-V`.
-    Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMI Aptio MMTool etc.
+- [ ] CPU needs to support `Intel VT-x` / `AMD-V`  
+    Note: Unless your notebook is like 10 years old, the CPU should support this.    
+    Note2: If it supports `Intel VT-d` / AMD's `IOMMU` it should automatically also support `Intel VT-x` / `AMD-V`.    
+- [ ] Chipset to support `Intel VT-x` / `AMD-V`    
+    Note: Unless your notebook is like 10 years old, it should support this.    
+    Note2: If it supports `Intel VT-d` / AMD's `IOMMU` it should automatically also support `Intel VT-x` / `AMD-V`.    
+- [ ] BIOS/UEFI option to enable `Intel VT-x` / `AMD-V` must exist or it has to be enabled    
+    Note: Unless your notebook is like 10 years old, it should support this.    
+    Note2: If it supports `Intel VT-d` / AMD's `IOMMU` it should automatically also support `Intel VT-x` / `AMD-V`.    
+    Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMI Aptio MMTool etc.    
 
-- [ ] CPU needs to support `Intel VT-d` / AMD's `IOMMU`
-    Note: If you have an Intel CPU, you can [check if it's in this list](https://ark.intel.com/Search/FeatureFilter?productType=processors&VTD=true&MarketSegment=Mobile).
-- [ ] Chipset to support `Intel VT-d` / AMD's `IOMMU`
-    Note: If your CPU/chipset is from Intel, you search it in [this list](https://www.intel.com/content/www/us/en/products/chipsets/view-all.html) to check it it supports VT-d.
-- [ ] BIOS/UEFI needs to support `Intel VT-d` / AMD's `IOMMU`
-    Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMI Aptio MMTool etc.
+- [ ] CPU needs to support `Intel VT-d` / AMD's `IOMMU`  
+    Note: If you have an Intel CPU, you can [check if it's in this list](https://ark.intel.com/Search/FeatureFilter?productType=processors&VTD=true&MarketSegment=Mobile).  
+- [ ] Chipset to support `Intel VT-d` / AMD's `IOMMU`  
+    Note: If your CPU/chipset is from Intel, you search it in [this list](https://www.intel.com/content/www/us/en/products/chipsets/view-all.html) to check it it supports VT-d.  
+- [ ] BIOS/UEFI needs to support `Intel VT-d` / AMD's `IOMMU`  
+    Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMI Aptio MMTool etc.  
 
-- [ ] When using an iGPU + dGPU setup, the iGPU needs to be enabled or the BIOS/UEFI needs to have an option to do so.
-    Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMI Aptio MMTool etc.
+- [ ] When using an iGPU + dGPU setup, the iGPU needs to be enabled or the BIOS/UEFI needs to have an option to do so.  
+    Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMI Aptio MMTool etc.  
 
-- [ ] The GPU you want to pass through, has to be in an IOMMU group that doesn't have other devices in it that the host system needs.
-    Possible workaround: You might be able to tear the groups further apart using the ACS override patch, but it's no magic cure, there are drawbacks.
+- [ ] The GPU you want to pass through, has to be in an IOMMU group that doesn't have other devices in it that the host system needs.  
+    Possible workaround: You might be able to tear the groups further apart using the ACS override patch, but it's no magic cure, there are drawbacks.  
 
-- [ ] When using an Nvidia dGPU for the passthrough, you'll most likely have to patch your GPU VBIOS ROM using [NVIDIA-vBIOS-VFIO-Patcher](https://github.com/Matoking/NVIDIA-vBIOS-VFIO-Patcher) or the OvmfPkg using [arne-claey's OvmfPkg patch](https://github.com/jscinoz/optimus-vfio-docs/issues/2) or path the Nvidia driver using [nvidia-kvm-patcher](https://github.com/sk1080/nvidia-kvm-patcher).
-    Note: Loading modded VBIOS ROMS should be pretty safe as the ROM gets deleted after every GPU shutdown anyway.
-    Note2: The `nvidia-kvm-patcher` is pretty buggy and very outdated and you'll most likely not get it to work especially with recent drivers. I haven't had any success with any driver so far.
-    Note3: I haven't been able to get arne-claey's OvmfPkg patch to build on my Fedora machine so far.
-    Note4: I haven't been able to get `NVIDIA-vBIOS-VFIO-Patcher` either yet.
+- [ ] When using an Nvidia dGPU for the passthrough, you'll most likely have to patch your GPU VBIOS ROM using [NVIDIA-vBIOS-VFIO-Patcher](https://github.com/Matoking/NVIDIA-vBIOS-VFIO-Patcher) or the OvmfPkg using [arne-claey's OvmfPkg patch](https://github.com/jscinoz/optimus-vfio-docs/issues/2) or path the Nvidia driver using [nvidia-kvm-patcher](https://github.com/sk1080/nvidia-kvm-patcher).  
+    Note: Loading modded VBIOS ROMS should be pretty safe as the ROM gets deleted after every GPU shutdown anyway.  
+    Note2: The `nvidia-kvm-patcher` is pretty buggy and very outdated and you'll most likely not get it to work especially with recent drivers. I haven't had any success with any driver so far.  
+    Note3: I haven't been able to get arne-claey's OvmfPkg patch to build on my Fedora machine so far.  
+    Note4: I haven't been able to get `NVIDIA-vBIOS-VFIO-Patcher` either yet.  
 
 
 The last point really seems to be the biggest hurdle, but since it's just a software issue, it should be possible to get this to work.  
