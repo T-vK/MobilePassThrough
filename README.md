@@ -69,6 +69,9 @@ To achieve that goal I have created a collection of scripts that automate:
 - [ ] When using an iGPU + dGPU setup, the iGPU needs to be enabled or the BIOS/UEFI needs to have an option to do so.
     Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMI Aptio MMTool etc.
 
+- [ ] The GPU you want to pass through, has to be in an IOMMU group that doesn't have other devices in it that the host system needs.
+    Possible workaround: You might be able to tear the groups further apart using the ACS override patch, but it's no magic cure, there are drawbacks.
+
 - [ ] When using an Nvidia dGPU for the passthrough, you'll most likely have to patch your GPU VBIOS ROM using [NVIDIA-vBIOS-VFIO-Patcher](https://github.com/Matoking/NVIDIA-vBIOS-VFIO-Patcher) or the OvmfPkg using [arne-claey's OvmfPkg patch](https://github.com/jscinoz/optimus-vfio-docs/issues/2) or path the Nvidia driver using [nvidia-kvm-patcher](https://github.com/sk1080/nvidia-kvm-patcher).
     Note: Loading modded VBIOS ROMS should be pretty safe as the ROM gets deleted after every GPU shutdown anyway.
     Note2: The `nvidia-kvm-patcher` is pretty buggy and very outdated and you'll most likely not get it to work especially with recent drivers. I haven't had any success with any driver so far.
