@@ -84,37 +84,9 @@ We just need some smart people to fix one of these patches or to make them more 
 
 In order to force your GPU to create a frame buffer while not having an external monitor hooked up, you can get fairly cheap EDID Dummy Plugs for [HDMI](https://www.aliexpress.com/item/-/32919567161.html) and [Mini DisplayPort](https://www.aliexpress.com/item/-/32822066472.html). You need that frame buffer in order to use [Looking Glass](https://looking-glass.hostfission.com/).
 
-## GPU-passthrough Compatibility List
+## GPU-passthrough Device Compatibility List
 
-```
-+-----------------------------+-----------------------------+------------------+--------------------------------------------------+
-| Device                      | dGPU passthrough            | iGPU passthrough | Checklist                                        |
-+-----------------------------+-----------------------------+------------------+--------------------------------------------------+
-| Razer Blade 15 (2018 Basic  | Linux guest: Probably works | Probably works   | +Linux compatible                                |
-| model)                      | Windows guest: Works, but   |                  | +At least two GPUs                               |
-| CPU: Intel Core i7-8750H    | Nvidia driver fails with    |                  | +CPU supports `Intel VT-d` / AMD's `IOMMU`       |
-| GPU: GTX 1060 Mobile        | error 43.                   |                  | +Chipset supports `Intel VT-d` / AMD's `IOMMU`   |
-| with Max-Q design (6GB)     |                             |                  | +UEFI/BIOS supports `Intel VT-d` / AMD's `IOMMU` |
-|                             |                             |                  | +iGPU is enabled                                 |
-|                             |                             |                  | (+probably MUXed)                                |
-+-----------------------------+-----------------------------+------------------+--------------------------------------------------+
-| MSI GF72 8RE-032            | Linux guest: Probably works | Probably works   | +Linux compatible                                |
-| CPU: Intel Core i7-8750H    | Windows guest: Works, but   |                  | +At least two GPUs                               |
-| GPU: GTX 1060 Mobile (6GB)  | Nvidia driver fails with    |                  | +CPU supports `Intel VT-d` / AMD's `IOMMU`       |
-|                             | error 43.                   |                  | +Chipset supports `Intel VT-d` / AMD's `IOMMU`   |
-|                             |                             |                  | +UEFI/BIOS supports `Intel VT-d` / AMD's `IOMMU` |
-|                             |                             |                  | +iGPU is enabled                                 |
-|                             |                             |                  | (+probably MUXed)                                |
-+-----------------------------+-----------------------------+------------------+--------------------------------------------------+
-| HP Pavilion G6-2348SG       | Not possible                | Not possible     | +Linux compatible                                |
-| CPU: Intel Core i7 3632QM   |                             |                  | +At least two GPUs                               |
-| GPU: AMD Radeon HD 7670M    |                             |                  | +CPU supports `Intel VT-d` / AMD's `IOMMU`       |
-|                             |                             |                  | -Chipset supports `Intel VT-d` / AMD's `IOMMU`   |
-|                             |                             |                  | -UEFI/BIOS supports `Intel VT-d` / AMD's `IOMMU` |
-|                             |                             |                  | +iGPU is enabled                                 |
-|                             |                             |                  | (+probably MUXed)                                |
-+-----------------------------+-----------------------------+------------------+--------------------------------------------------+
-```
+Check out: https://gpu-passthrough.com/
 
 ## Credits
 
