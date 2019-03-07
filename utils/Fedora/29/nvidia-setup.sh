@@ -7,6 +7,8 @@ DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 VM_FILES_DIR="${PROJECT_DIR}/vm-files"
 
+source "$DISTRO_UTILS_DIR/kernel-param-utils"
+
 echo "Install third party repositories"
 sudo dnf install fedora-workstation-repositories -y
 
