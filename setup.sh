@@ -6,7 +6,7 @@ UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 
-source "$(dirname "$0")/$DISTRO_UTILS_DIR/kernel-param-utils"
+source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
 sudo $DISTRO_UTILS_DIR/install-dependencies
 sudo $DISTRO_UTILS_DIR/set-kernel-params
