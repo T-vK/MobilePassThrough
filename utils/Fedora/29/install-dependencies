@@ -12,7 +12,7 @@ sudo wget https://fedorapeople.org/groups/virt/virtio-win/virtio-win.repo -O /et
 echo "Installing virtio-win..."
 sudo dnf install virtio-win -y
 echo "Upgrading to latest virtio-win..."
-sudo dnf --enablerepo=virtio-win-latest upgrade virtio-win
+sudo dnf --enablerepo=virtio-win-latest upgrade virtio-win -y
 echo "Installing virt-viewer so you can connect to the VM for the windows installation"
 sudo dnf install -y virt-viewer
 # /usr/share/virtio-win/virtio-win.iso

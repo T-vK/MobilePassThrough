@@ -9,9 +9,8 @@ DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
 sudo $DISTRO_UTILS_DIR/install-dependencies
-sudo $DISTRO_UTILS_DIR/set-kernel-params
+sudo $UTILS_DIR/set-kernel-params
 sudo $DISTRO_UTILS_DIR/nvidia-setup
-prepare-vm
 
 echo "You should probably reboot now!"
 echo "But first make sure you didn't get any errors above."

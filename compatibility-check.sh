@@ -12,17 +12,16 @@ LOG_BASE_DIR="${SCRIPT_DIR}/logs"
 #LSHW_MOCK="${SCRIPT_DIR}/mock-data/$MOCK_SET-lshw"
 #LSIOMMU_MOCK="${SCRIPT_DIR}/mock-data/$MOCK_SET-lsiommu"
 
-if [ -z "$(which optirun)" ]; then
-    USE_BUMBLEBEE=false
-    OPTIRUN_PREFIX=""
-else
+if sudo which optirun &> /dev/null && sudo optirun echo>/dev/null ; then
     USE_BUMBLEBEE=true
     OPTIRUN_PREFIX="optirun "
+else
+    USE_BUMBLEBEE=false
+    OPTIRUN_PREFIX=""
 fi
 
-
 if [ -z ${LSIOMMU_MOCK+x} ]; then
-    IOMMU_GROUPS=$(sudo ${OPTIRUN_PREFIX}${SCRIPT_DIR}/utils/lsiommu)
+    IOMMU_GROUPS=$(sudo ${OPTIRUN_PREFIX}${UTILS_DIR}/lsiommu)
     MOCK_MODE=false
 else
     IOMMU_GROUPS=$(cat "${LSIOMMU_MOCK}")
@@ -221,9 +220,8 @@ fi
 if [ "${UEFI_VIRTUALIZATION_ENABLED}" = true ] && [ "${UEFI_IOMMU_ENABLED}" = true ]  && [ "${KERNEL_IOMMU_ENABLED}" = true ] && [ "${IOMMU_COMPATIBILITY_LVL}" -gt "0" ] ; then
     log_green "If you found a notebook that appears to be GPU pass-through compatible, please open an issue on Github and let me know."
     if [ "${IOMMU_COMPATIBILITY_LVL}" -gt "1" ] ; then
-        log_green "You may now proceed and run the start-vm script."
-        log_green "However, you should adjust how much RAM, CPU cores etc the VM can use at the very top of the script."
-        log_green "You should also look at the $DISTRO_UTILS_DIR/prepare-vm script and change the size of the VM disk to your liking."
+        log_green "You may now proceed and run the start-vm.sh script."
+        log_green "However, you should adjust how much RAM, CPU cores, disk space etc the VM can use at the very top of the script."
     fi
 fi
 

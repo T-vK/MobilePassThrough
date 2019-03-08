@@ -7,3 +7,4 @@
 /vm-files/MAC_ADDRESS.txt
 .*.swp
 .*.swo
+/utils/nvflash_linux
