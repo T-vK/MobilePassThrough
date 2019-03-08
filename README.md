@@ -38,7 +38,7 @@ To achieve that goal I have created a collection of scripts that automate:
 sudo dnf install git -y
 git clone https://github.com/T-vK/MobilePassThrough.git
 cd MobilePassThrough
-sudo ./setup
+sudo ./setup.sh
 ```
 
 - Reboot.
