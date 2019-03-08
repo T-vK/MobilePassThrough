@@ -31,12 +31,23 @@ To achieve that goal I have created a collection of scripts that automate:
 - You might also have to disable secure boot in the UEFI.
 - It might also be necessary to disable fastboot in the UEFI.
 - Next you need to install Fedora 29.
-- Download this project and run the `setup.sh` script.
+- Download this project and run the `setup.sh` script:
+
+``` bash
+# Run this in a terminal
+sudo dnf install git -y
+git clone https://github.com/T-vK/MobilePassThrough.git
+cd MobilePassThrough
+sudo ./setup
+```
+
 - Reboot.
-- Run the compatibility-check script.
-- Change the options at the top of the `start-vm.sh` script and `prepare-vm` script to your liking. 
+- Run the `compatibility-check.sh` found in the `MobilePassThrough` folder that was created when you executed the git command.
+- Change the options at the top of the `start-vm.sh` script to your liking. 
+  (Make sure the path to to your windows iso is correct. )
   (If you don't have a VBIOS ROM, don't use the GPU_ROM option.)
-- Run the `start-vm.sh` script.
+- Run the `start-vm.sh` script. 
+  (The first time you run it, it will create the VM for you and start it, the next time ti will simply start the existing VM.
 
 
 ## Requirements to get GPU-passthrough to work on mobile
@@ -83,6 +94,7 @@ The last point really seems to be the biggest hurdle, but since it's just a soft
 We just need some smart people to fix one of these patches or to make them more accessable.
 
 In order to force your GPU to create a frame buffer while not having an external monitor hooked up, you can get fairly cheap EDID Dummy Plugs for [HDMI](https://www.aliexpress.com/item/-/32919567161.html) and [Mini DisplayPort](https://www.aliexpress.com/item/-/32822066472.html). You need that frame buffer in order to use [Looking Glass](https://looking-glass.hostfission.com/).
+(This plug might not be required on all systems though.)
 
 ## GPU-passthrough Device Compatibility List
 
