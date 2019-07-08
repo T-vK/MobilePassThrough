@@ -60,7 +60,7 @@ sudo ./setup.sh
 
 In the future when you want to start the VM, you can open 3 terminals:
 
-- In the first one run `./looking-glass-client`
+- In the first one run `./LookingGlass/client/build/looking-glass-client`
 - In the second one run `sudo ./start-vm.sh`
 - In the third one run `spicy -h localhost -p 5900` or alternatively use something like Remmina to connect to the VM via RDP (192.168.99.2) (Your windows user needs to have a password for that to work)
 
