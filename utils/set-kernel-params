@@ -16,6 +16,8 @@ echo "Adding kernel parameters to enable IOMMU on Intel/AMD CPUs..."
 addKernelParam "iommu=1" # '1' is not a documented option. stop confusing me wendell! Maybe the "force" option should be used instead?
 addKernelParam "amd_iommu=on" # 'on' is not a docuemnted option for this parameter either! This is insanely confusing!
 addKernelParam "intel_iommu=on" # enable Intel VT-D   ;# using "intel_iommu=on,igfx_off" iGPU gets no iommu group...
+echo "Adding kernel parameter to enable mediated iGPU passthrough support (GVT-g) on Intel iGPUs..."
+addKernelParam "i915.enable_gvt=1"
 echo "Adding a kernel parameter to prevent bluescreens when a VM does MSR reads / writes directly..."
 addKernelParam "kvm.ignore_msrs=1"
 echo "Adding a kernel parameter to tell dracut to load vfio-pci first..."
@@ -28,7 +30,7 @@ addKernelParam "rd.driver.pre=vfio-pci" # tell dracut to load vfio-pci first
 #addKernelParam "acpi_osi=!" # may fix problems with AMI style UEFIs
 #addKernelParam "acpi_osi='Windows 2009'" # may fix problems with AMI style UEFIs
 
-echo "TODO: check if /etc/dracut.conf.d/vfio.conf is necessary / make sure it onyl happens once"
+# TODO: check if /etc/dracut.conf.d/vfio.conf is necessary / make sure it onyl happens once
 #echo "additional vfio stub driver stuff"
 #echo 'add_drivers+="vfio vfio_iommu_type1 vfio_pci' >> /etc/dracut.conf.d/vfio.conf
 

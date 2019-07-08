@@ -78,7 +78,7 @@ if [ "$IOMMU_GROUPS" != "" ] ; then
     log_green "[OK] VT-D / IOMMU is enabled in the UEFI."
 else
     UEFI_IOMMU_ENABLED=false
-    log_red "[Error] VT-D / IOMMU is not enabled in the UEFI! This is required to check which devices are in which IOMMU group and to use GPU pass-through!"
+    log_red "[Error] VT-D / IOMMU is not enabled in the UEFI! This is required to check which devices are in which IOMMU group and to use GPU passthrough!"
 fi
 
 # Check if kernel is configured correctly
@@ -87,7 +87,7 @@ if cat /proc/cmdline | grep --quiet iommu ; then
     log_green "[OK] The IOMMU kernel parameters are set."
 else
     KERNEL_IOMMU_ENABLED=false
-    log_red "[Error] The iommu kernel parameters are missing! You have to add them in roder to use GPU pass-through!"
+    log_red "[Error] The iommu kernel parameters are missing! You have to add them in roder to use GPU passthrough!"
 fi
 
 GPU_IDS=($(echo "${GPU_INFO}" | grep "pci@" | cut -d " " -f 1 | cut -d ":" -f 2-))
@@ -111,7 +111,7 @@ for GPU_ID in "${GPU_IDS[@]}"; do
             log_orange "${OTHER_DEVICES_IN_GPU_GROUP}"
             GOOD_GPUS+=("${GPU_ID}")
         else
-            log_orange "[Problem] Other devices have been found in the IOMMU group of the GPU with the ID '${GPU_ID}'. Depending on the devices, this could make GPU pass-through impossible to pass this GPU through to a virtual machine!"
+            log_orange "[Problem] Other devices have been found in the IOMMU group of the GPU with the ID '${GPU_ID}'. Depending on the devices, this could make GPU passthrough impossible to pass this GPU through to a virtual machine!"
             log_orange "The devices found in this GPU's IOMMU Group are:"
             log_red "${OTHER_DEVICES_IN_GPU_GROUP}"
             log_white "[Info] It might be possible to get it to work by putting the devices in different slots on the motherboard and or by using the ACS override patch. Otherwise you'll probably have to get a different motherboard. If you're on a laptop, there is nothing you can do as far as I'm aware. Although it would theoretically be possible for ACS support for laptops to exist. TODO: Find a way to check if the current machine has support for that."
@@ -140,7 +140,7 @@ IOMMU_COMPATIBILITY_LVL=0 # 0: no GPUs to pass through; 1: at least 1 GPU for pt
 
 if [ "${#GOOD_GPUS[@]}" == "0" ] ; then
     if [ "${#GPU_IDS[@]}" == "0" ] ; then
-        log_red "[Warning] Failed to find any GPUs! Assuning this is correct, GPU pass-through is obviously impossible on this system in the current configuration!"
+        log_red "[Warning] Failed to find any GPUs! Assuning this is correct, GPU passthrough is obviously impossible on this system in the current configuration!"
     else
         log_red "[Warning] This script was not able to identify a GPU in this that could be passed through to a VM!"
     fi
@@ -163,15 +163,15 @@ else
     if [ ${#GOOD_GPUS[@]} != 1 ] && grep -qE '^([0-9]+)( \1)*$' <<< $(echo $(echo "${IOMMU_GROUPS}" | grep -E $(echo "${GOOD_GPUS[@]}" | tr ' ' '|') | cut -d " " -f 3)) ; then
         if [ ${#BAD_GPUS[@]} == 0 ] ; then
             IOMMU_COMPATIBILITY_LVL=1
-            log_orange "[Warning] All GPUs in this system are in the same IOMMU group. This would make GPU pass-through difficult (not impossible) because your host machine would be left without a GPU!"
+            log_orange "[Warning] All GPUs in this system are in the same IOMMU group. This would make GPU passthrough difficult (not impossible) because your host machine would be left without a GPU!"
         else
             IOMMU_COMPATIBILITY_LVL=2
-            log_green "[Warning] Some of your GPUs are in the same IOMMU group. This means they could only be passed through together. You could still use a GPU that's in another group for your host system. (E.g. the one with the PCI adress 'pci@0000:'${BAD_GPUS[0]} "
+            log_green "[Warning] Some of your GPUs are in the same IOMMU group. This means they could only be passed through together. You could still use a GPU that's in another group for your host system. (E.g. the one with the PCI address 'pci@0000:'${BAD_GPUS[0]} "
         fi
     else
         if [ "${#GPU_IDS[@]}" == "1" ] ; then
             IOMMU_COMPATIBILITY_LVL=1
-            log_orange "[Warning] Only 1 GPU found! (Counting all GPUs, not just dedicated ones.) This would make GPU pass-thruogh difficult (not impossible) because your host machine would be left without a GPU!"
+            log_orange "[Warning] Only 1 GPU found! (Counting all GPUs, not just dedicated ones.) This would make GPU passthrough difficult (not impossible) because your host machine would be left without a GPU!"
         else
             IOMMU_COMPATIBILITY_LVL=2
             log_green "[OK] You have GPUs that are not in the same IOMMU group. At least one of these could be passed through to a VM and at least one of the remaining ones could be used for the host system."
@@ -197,7 +197,7 @@ fi
         log_orange "[Warning] This system is probably MUX-less. (The connection between the GPU(s) and the [internal display]/[display outputs] is not multiplexed.)"
     fi
 
-    
+
 
     echo ${DATE} > "${LOG_DIR}/date.log"
     echo "${IOMMU_GROUPS}" > "${LOG_DIR}/lsiommu.log"
@@ -218,7 +218,7 @@ fi
 #fi
 
 if [ "${UEFI_VIRTUALIZATION_ENABLED}" = true ] && [ "${UEFI_IOMMU_ENABLED}" = true ]  && [ "${KERNEL_IOMMU_ENABLED}" = true ] && [ "${IOMMU_COMPATIBILITY_LVL}" -gt "0" ] ; then
-    log_green "If you found a notebook that appears to be GPU pass-through compatible, please open an issue on Github and let me know."
+    log_green "If you found a notebook that appears to be GPU passthrough compatible, please open an issue on Github and let me know."
     if [ "${IOMMU_COMPATIBILITY_LVL}" -gt "1" ] ; then
         log_green "You may now proceed and run the start-vm.sh script."
         log_green "However, you should adjust how much RAM, CPU cores, disk space etc the VM can use at the very top of the script."

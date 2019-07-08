@@ -15,4 +15,3 @@ sudo $DISTRO_UTILS_DIR/nvidia-setup
 echo "You should probably reboot now!"
 echo "But first make sure you didn't get any errors above."
 echo "After the reboot you might want to run the compatibility-check script."
-
