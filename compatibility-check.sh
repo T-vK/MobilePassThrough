@@ -220,8 +220,7 @@ fi
 if [ "${UEFI_VIRTUALIZATION_ENABLED}" = true ] && [ "${UEFI_IOMMU_ENABLED}" = true ]  && [ "${KERNEL_IOMMU_ENABLED}" = true ] && [ "${IOMMU_COMPATIBILITY_LVL}" -gt "0" ] ; then
     log_green "If you found a notebook that appears to be GPU passthrough compatible, please open an issue on Github and let me know."
     if [ "${IOMMU_COMPATIBILITY_LVL}" -gt "1" ] ; then
-        log_green "You may now proceed and run the start-vm.sh script."
-        log_green "However, you should adjust how much RAM, CPU cores, disk space etc the VM can use at the very top of the script."
+        log_green "You may now proceed and run the generate-vm-config.sh script as mentioned in the README."
     fi
 fi
 

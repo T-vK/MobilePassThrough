@@ -85,7 +85,8 @@ interactiveCfg "Enable QXL. (Required for Windows installation; has to be disabl
 interactiveCfg "List of USB devices to pass through. (Semicolon separated, e.g. vendorid=0x0b12,productid=0x9348;vendorid=0x0b95,productid=0x1790)" USB_DEVICES
 # TODO: Make selecting USB devices easier
 
+source "$USER_CONFIG_FILE"
 if [ ! -f "$INSTALL_IMG" ]; then
     echo "'$INSTALL_IMG' does not exist and will be downloaded automatically now. If you don't want that, press Ctrl+C to cancel it."
-    $UTILS_DIR/download-windows-iso.sh
+    $UTILS_DIR/download-windows-iso "$INSTALL_IMG"
 fi

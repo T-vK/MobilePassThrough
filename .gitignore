@@ -9,6 +9,6 @@
 .*.swo
 thirdparty
 /user.conf
-/mobile-passthrough-iso/bin
+/helper-iso-files/bin
 /LookingGlass
 /utils/nvflash_linux

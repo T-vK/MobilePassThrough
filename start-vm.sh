@@ -121,11 +121,11 @@ fi
 if [ "$DGPU_PASSTHROUGH" = true ] ; then
     echo "> Using dGPU passthrough..."
     echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
-    sudo echo "0000:${DGPU_PCI_ADDRESS}" | sudo tee "/sys/bus/pci/devices/0000:${DGPU_PCI_ADDRESS}/driver/unbind" > /dev/null
+    sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' '/sys/bus/pci/devices/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
     echo "> Binding dGPU to VFIO driver..."
-    sudo echo "${DGPU_VENDOR_ID} ${DGPU_DEVICE_ID}" | sudo tee "/sys/bus/pci/drivers/vfio-pci/new_id" > /dev/null
-    #sudo echo "options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}" | sudo tee /etc/modprobe.d/vfio.conf > /dev/null
-    #sudo echo "8086:1901" | sudo tee "/sys/bus/pci/drivers/vfio-pci/new_id" > /dev/null
+    sudo bash -c "echo '${DGPU_VENDOR_ID} ${DGPU_DEVICE_ID}' > '/sys/bus/pci/drivers/vfio-pci/new_id'"
+    #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
+    #sudo bash -c "echo '8086:1901' > '/sys/bus/pci/drivers/vfio-pci/new_id'"
     # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
     DGPU_ROOT_PORT_PARAM="-device ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1"
     DGPU_PARAM="-device vfio-pci,host=${DGPU_PCI_ADDRESS},bus=root.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}"
@@ -146,7 +146,7 @@ if [ "$SHARE_IGPU" = true ] ; then
     VGPU_TYPE=$(basename -- "${VGPU_TYPE_DIR}")
     # For further twaeking read: https://github.com/intel/gvt-linux/wiki/GVTg_Setup_Guide#53-create-vgpu-kvmgt-only
     echo "> Create vGPU for mediated iGPU passthrough..."
-    sudo echo "${VGPU_UUID}" > "/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/${VGPU_TYPE}/create"
+    sudo bash -c "echo '${VGPU_UUID}' > '/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/${VGPU_TYPE}/create'"
      # display=on when using dmabuf
 
     if [ "$USE_DMA_BUF" = true ] ; then
@@ -185,7 +185,7 @@ if [ -z "$USB_DEVICES" ]; then
     echo "> Not using USB passthrough..."
     USB_DEVICE_PARAMS=""
 else
-    echo "> Using USB passthorugh..."
+    echo "> Using USB passthrough..."
     IFS=';' read -a USB_DEVICES_ARRAY <<< "${USB_DEVICES}"
     USB_DEVICE_PARAMS=""
     for USB_DEVICE in "${USB_DEVICES_ARRAY[@]}"; do
@@ -252,10 +252,10 @@ sudo qemu-system-x86_64 \
 # This gets executed when the vm exits
 echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
 if [ "$DGPU_PASSTHROUGH" = true ] ; then
-    sudo echo "0000:${DGPU_PCI_ADDRESS}" | sudo tee "/sys/bus/pci/drivers/vfio-pci/0000:${DGPU_PCI_ADDRESS}/driver/unbind" > /dev/null
-    sudo bash -c 'echo "OFF" >> /proc/acpi/bbswitch'
+    sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' > '/sys/bus/pci/drivers/vfio-pci/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
+    sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
 fi
 if [ "$SHARE_IGPU" = true ] ; then
     echo "> Remove Intel vGPU..."
-    sudo echo 1 > "/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID}/remove"
+    sudo bash -c "echo 1 > '/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID}/remove'"
 fi

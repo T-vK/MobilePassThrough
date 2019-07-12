@@ -51,8 +51,8 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 - It might also be necessary to disable fastboot in the UEFI.
 
 ### Installation and configuration
-- Downlaod and install [normal Fedora](https://getfedora.org/) or the [KDE version](https://spins.fedoraproject.org/kde/)
-- Make sure to crate a user account (with administrator rights) when you are asked
+- Download and install [standard Fedora](https://getfedora.org/) or the [KDE version](https://spins.fedoraproject.org/kde/) (ideally in UEFI mode)
+- Make sure to create a user account (with administrator rights) when you are asked
 - Open a terminal and install git by typing the following, pressing enter after each line:
 
 ``` bash
