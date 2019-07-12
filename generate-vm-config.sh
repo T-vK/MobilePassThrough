@@ -52,7 +52,7 @@ interactiveCfg "Where to save the VM drive image?" DRIVE_IMG
 interactiveCfg "How big should the VM drive image be?" VM_DISK_SIZE
 interactiveCfg "How many CPU cores should the VM get?" CPU_CORE_COUNT
 interactiveCfg "How much RAM should the VM get?" RAM_SIZE
-interactiveCfg "Path to your Windows installation iso." INSTALL_IMG
+interactiveCfg "Path to your Windows installation iso. (If it doesn't exist it will be downloaded automatically.)" INSTALL_IMG
 interactiveCfg "Path to a dGPU ROM. (Optional)" DGPU_ROM
 interactiveCfg "Path to a folder to share with the VM via SMB. (Optional)" SMB_SHARE_FOLDER
 interactiveCfg "Location of OVMF_VARS.fd." OVMF_VARS
@@ -84,3 +84,8 @@ interactiveCfg "Enable dma-buf. (Yet another way to get display access to your V
 interactiveCfg "Enable QXL. (Required for Windows installation; has to be disabled after the Nvidia driver has been installed!)" USE_QXL
 interactiveCfg "List of USB devices to pass through. (Semicolon separated, e.g. vendorid=0x0b12,productid=0x9348;vendorid=0x0b95,productid=0x1790)" USB_DEVICES
 # TODO: Make selecting USB devices easier
+
+if [ ! -f "$INSTALL_IMG" ]; then
+    echo "'$INSTALL_IMG' does not exist and will be downloaded automatically now. If you don't want that, press Ctrl+C to cancel it."
+    $UTILS_DIR/download-windows-iso.sh
+fi
