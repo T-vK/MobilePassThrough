@@ -180,6 +180,8 @@ By modding your BIOS/UEFI, you can make features available and change settings t
  - If you want to use Looking Glass download and install the [Microsoft Visual C++ 2017 Redistributables Package](https://download.microsoft.com/download/8/9/D/89D195E1-1901-4036-9A75-FBE46443FC5A/VC_redist.x64.exe) and download the [latest release of the Looking Glass host](https://github.com/gnif/LookingGlass/releases)
  - I'd also put Looking Glass into the startup folder so that it runs automatically every time.
 
+## Known issues
+- Sometimes the start-vm.sh script will fail to start the VM because of this error: "echo: write error: No space left on device". It happens while attempting to create a vGPU for the iGPU. I have no clue why this happens, but it's only temporary. Try again in a few seconds or a minute and it works again.
 
 ## Credits
 
