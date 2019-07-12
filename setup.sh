@@ -11,7 +11,8 @@ source "$DISTRO_UTILS_DIR/kernel-param-utils"
 sudo $DISTRO_UTILS_DIR/install-dependencies
 sudo $UTILS_DIR/set-kernel-params
 sudo $DISTRO_UTILS_DIR/nvidia-setup
+sudo $DISTRO_UTILS_DIR/looking-glass-setup
 
-echo "You should probably reboot now!"
-echo "But first make sure you didn't get any errors above."
-echo "After the reboot you might want to run the compatibility-check script."
+echo "Make sure you didn't get any critical errors above."
+echo "Then reboot!"
+echo "After the reboot you can run the compatibility-check.sh script."

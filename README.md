@@ -2,67 +2,114 @@
 
 ## Introduction
 The goal of this project is to make GPU passthrough on notebooks as easy and accessible as possible.  
-To achieve that goal I have created a collection of scripts that automate:
+To achieve that goal I have written a collection of scripts that:
 
-- [x] The installation of required dependencies
-- [x] The changes required to the kernel parameters
-- [x] The installation of Bumblebee and the Nvidia GPU driver
-- [x] The checking required to find out to what extend your device is compatible with GPU passthrough.
-- [x] The extraction of your GPU's VBIOS ROM (needs some work)
-- [x] The creation and configuration of a virtual machine that is fully configured for GPU passthrough.
-- [x] The required rebinding of the GPU to either the vfio drivers (when the VM starts) or the nvidia drivers (when the VM exits).
-- [x] Sharing the iGPU via GVT-g so that you get a battery friendly Windows VM that supports Optimus
-- [x] Installing and starting of Looking Glass on the Linux host
-- [x] Setting up Looking Glass and the VFIO drivers in the Windows VM
+### On the host system (Linux):
+
+- [x] Automatically install the required dependencies
+- [x] Automatically configure the kernel parameters to support GPU passthrough
+- [x] Automatically install Bumblebee and the Nvidia GPU driver
+- [x] Automatically check if and to what extend your device is compatible with GPU passthrough.
+- [x] Automatically create and configure a virtual machine that is fully configured for GPU passthrough.
+- [x] Automatically download the Windows 10 installation iso from Microsoft.
+- [x] Automatically compile/set up LookingGlass
+
+### In the virtual machine (Windows)
+
+- [x] Automatically install the required drivers (ivshmem and other vfio drivers)
+- [x] Automatically compile/install/start LookingGlass
+- [x] Automatically configure the network
+- [x] Automatically set up RDP
+- [x] Automatically install and autostart LookingGlass
+
+And there is also a lot of advanced stuff that I managed to fully automate, like:
+
+ - [x] Automatically rebinding the dGPU to the vfio drivers (when the VM starts)
+ - [x] Automatically rebinding the dGPU to the nvidia drivers (when the VM exits)
+ - [x] Automatically creating a vGPU from the iGPU (when the VM starts) to allow sharing the iGPU with the VM (aka "mediated iGPU passthough" using GVT-g) (So your VM can safe a ton of battery life when it doesn't need the dGPU.)
+ - [x] Automatically remove the vGPU (when the VM exits)
 
 ## Limitations
 
 - The project is currently only compatible with Fedora 29 and Fedora 30 out of the box.
-- This project currently only supports Windows 10 VMs. (For other Windows OSes you have to figure out the driver installation etc. on your own.)
+- This project currently only supports Windows 10 x64 VMs. (For other Windows versions you have to figure out the driver installation etc. on your own.)
 - Your device needs to have an Intel CPU and an Nvidia GPU. (Although the compatibility-check script should actually work on any hardware. The other scripts however would need adjustments to run on other distributions.)
 - Expect bugs. I have only tested this on a handful of devices and I have constantly changed the scripts without testing everything every time.
 - VBIOS ROM extraction will likely fail because the nvidia kernel module is loaded. (You may not need the VBIOS ROM though.)
-- This project takes a couple of measures to circumvent Error 43, which you might see in the Windows device manager when you pass a mobile GPU through to a Windows VM. Some systems will still show Error 43 though.
+- This project takes a couple of measures to circumvent Nvidia's infamous Error 43, which you normally see in the Windows device manager when you pass a mobile Nvidia GPU through to a Windows VM. But even with these measures, some systems will still show Error 43.
 
 ## Screenshot of the compatibility-check script
 ![example output](screenshots/example-output.png)
 
-## Usage
-- You should enable the integrated GPU of the CPU so that you have two (one for the host one for the guest system)
-  (Some vendors actually disable the CPU integrated GPU completely and don't offer UEFI options to enable it. Modding your BIOS could potentially fix that.)
+## How to use?
+
+### BIOS/UEFI configuration
+- On some (gaming) notebooks the integrated graphics of the CPU are disabled. If that is the case for you, you need to enable them in the BIOS/UEFI.
+  (Some vendors actually disable the CPU integrated GPU completely and don't offer UEFI options to enable it. Modding your BIOS could potentially fix that. See the "UEFI / BIOS modding" for more information on that.)
 - You might also have to disable secure boot in the UEFI.
-  (Mainly to use nvidas proprietary driver on Linux while your VM is not running.)
+  (Mainly to use Nvida's proprietary driver on Linux while your VM is not running.)
 - It might also be necessary to disable fastboot in the UEFI.
-- Next you need to install Fedora 30.
-- Download this project and run the `setup.sh` script like so:
+
+### Installation and configuration
+- Downlaod and install [normal Fedora](https://getfedora.org/) or the [KDE version](https://spins.fedoraproject.org/kde/)
+- Make sure to crate a user account (with administrator rights) when you are asked
+- Open a terminal and install git by typing the following, pressing enter after each line:
 
 ``` bash
-# Run this in a terminal
-sudo dnf install git -y
-git clone https://github.com/T-vK/MobilePassThrough.git
-cd MobilePassThrough
-sudo ./setup.sh
+sudo dnf install git -y # Install git
+git clone https://github.com/T-vK/MobilePassThrough.git # Clone the project
+cd MobilePassThrough # Enter the project directory
+sudo ./setup.sh # Dependency installation; kernel param config; bumblebee / nvidia driver installation
 ```
 
-- Reboot.
-- Run the `compatibility-check.sh` found in the `MobilePassThrough` folder that was created when you executed the git command.
-- Run the `generate-vm-config.sh` script to generate a config file according to your liking.
-  (Make sure the path to to your windows iso is correct. You can download your windows 10 iso from here: https://www.microsoft.com/en-us/software-download/windows10ISO )
-- Run the `generate-helper-iso.sh` script to generate an iso file containing a couple of tools, installers, drivers and a script that utilizes them to set up your VM automatically.
-- Run `sudo ./start-vm.sh`
-  (The first time you run it, it will create the VM for you and start it, the next time it will simply start the existing VM.)
-- The VM should be running now. Now quickly open a new terminal and run `spicy -h localhost -p 5900` (A window should appear giving a GUI to interact with the VM.)
-- It will probably say something like "press any key to boot from cd now". Do that! (If you were too slow, exit the VM by going to the other terminal, press Ctrl+C and run `sudo ./start-vm.sh` again, ...)
+- Reboot your system
+- Open a new terminal and type:
+
+``` bash
+cd MobilePassThrough # Enter the project directory
+sudo ./compatibility-check.sh # Check if your system is compatible
+# If the script says that your system is compatible you may succeed:
+./generate-vm-config.sh # Create a config file
+# Follow the instructions in your terminal! Then continue:
+./generate-helper-iso.sh # Generate an iso file containing tools, installers, drivers and a Batch script that we need later
+```
+
+### Installation of Windows 10 in the VM
+
+- Open TWO terminals, in the first one type:
+``` bash
+cd MobilePassThrough # Enter the project directory
+sudo ./start-vm.sh # Start the VM for the first time
+# Make sure you didn't get any critical errors
+```
+
+- In the second one quickly type:
+``` bash
+spicy -h localhost -p 5900
+```
+- window should appear giving a GUI to interact with the VM and it will say something like "press any key to boot from cd now".
+- Press any key quickly!
 - The Windows installer will show. Go through it, it should be simple enough.
-- During the installation you may have to manually pick a disk driver for the virtual disk to be recognized. Click "Browse" and Select ?:\viostor\w10\amd64\ from the virtio-win CD Drive.
-- Once Windows is installed, go to the virtual CD drive that contains the start.bat file and run it as Admin.
+- During the installation you may have to manually pick a disk driver for the virtual disk to be recognized. Click "Browse" and select `?:\viostor\w10\amd64\` from the `virtio-win` CD Drive.
+- You should set a password for your user account otherwise you'll have trouble with RDP.
+- Once Windows is installed, go to the virtual CD drive that contains the start.bat file and right-click it and click `Run as administrator` and make sure you didn't get any errors.
 - Reboot the VM.
 
-In the future when you want to start the VM, you can open 3 terminals:
+In the future when you want to start the VM, you can open 2 terminals:
 
-- In the first one run `./LookingGlass/client/build/looking-glass-client`
-- In the second one run `sudo ./start-vm.sh`
-- In the third one run `spicy -h localhost -p 5900` or alternatively use something like Remmina to connect to the VM via RDP (192.168.99.2) (Your windows user needs to have a password for that to work)
+- In the first one run:
+``` bash
+cd MobilePassThrough # Enter the project directory
+sudo ./start-vm.sh
+```
+
+- Open Remmina and connect to `rdp://192.168.99.2`
+
+- Then in the second terminal run:
+``` bash
+cd MobilePassThrough # Enter the project directory
+./LookingGlass/client/build/looking-glass-client`
+```
 
 ## Requirements to get GPU-passthrough to work on mobile
 

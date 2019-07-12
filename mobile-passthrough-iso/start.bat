@@ -18,3 +18,5 @@ netsh int ip set dns "Local Area Connection" static 192.168.99.1 primary
 
 echo "Enable remote desktop..."
 reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+
+pause

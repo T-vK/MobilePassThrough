@@ -146,7 +146,7 @@ if [ "$SHARE_IGPU" = true ] ; then
     VGPU_TYPE=$(basename -- "${VGPU_TYPE_DIR}")
     # For further twaeking read: https://github.com/intel/gvt-linux/wiki/GVTg_Setup_Guide#53-create-vgpu-kvmgt-only
     echo "> Create vGPU for mediated iGPU passthrough..."
-    sudo echo "${VGPU_UUID}" | sudo tee "/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/${VGPU_TYPE}/create" > /dev/null
+    sudo echo "${VGPU_UUID}" > "/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/${VGPU_TYPE}/create"
      # display=on when using dmabuf
 
     if [ "$USE_DMA_BUF" = true ] ; then
@@ -257,5 +257,5 @@ if [ "$DGPU_PASSTHROUGH" = true ] ; then
 fi
 if [ "$SHARE_IGPU" = true ] ; then
     echo "> Remove Intel vGPU..."
-    sudo echo 1 | sudo tee "/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID}/remove" > /dev/null
+    sudo echo 1 > "/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID}/remove"
 fi
