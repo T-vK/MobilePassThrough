@@ -57,26 +57,6 @@ else
     echo "> Warning: Bumblebee is not available or doesn't work properly. Continuing anyway..."
 fi
 
-echo "> Retrieving and parsing DGPU IDs..."
-DGPU_IDS=$(sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
-DGPU_VENDOR_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f1)
-DGPU_DEVICE_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f2)
-DGPU_SS_IDS=$(optirun lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
-DGPU_SS_VENDOR_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f1)
-DGPU_SS_DEVICE_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f2)
-
-if [ -z "$DGPU_IDS" ]; then
-    echo "> Error: Failed to retrieve DGPU IDs!"
-    echo "> DGPU_PCI_ADDRESS: ${DGPU_PCI_ADDRESS}"
-    echo "> DGPU_IDS: $DGPU_IDS"
-    echo "> DGPU_VENDOR_ID: $DGPU_VENDOR_ID"
-    echo "> DGPU_DEVICE_ID: $DGPU_DEVICE_ID"
-    echo "> DGPU_SS_IDS: $DGPU_SS_IDS"
-    echo "> DGPU_SS_VENDOR_ID: $DGPU_SS_VENDOR_ID"
-    echo "> DGPU_SS_DEVICE_ID: $DGPU_SS_DEVICE_ID"
-    exit
-fi
-
 echo "> Loading vfio-pci kernel module..."
 sudo modprobe vfio-pci
 
@@ -120,6 +100,27 @@ fi
 
 if [ "$DGPU_PASSTHROUGH" = true ] ; then
     echo "> Using dGPU passthrough..."
+    
+    echo "> Retrieving and parsing DGPU IDs..."
+    DGPU_IDS=$(sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
+    DGPU_VENDOR_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f1)
+    DGPU_DEVICE_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f2)
+    DGPU_SS_IDS=$(optirun lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
+    DGPU_SS_VENDOR_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f1)
+    DGPU_SS_DEVICE_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f2)
+
+    if [ -z "$DGPU_IDS" ]; then
+        echo "> Error: Failed to retrieve DGPU IDs!"
+        echo "> DGPU_PCI_ADDRESS: ${DGPU_PCI_ADDRESS}"
+        echo "> DGPU_IDS: $DGPU_IDS"
+        echo "> DGPU_VENDOR_ID: $DGPU_VENDOR_ID"
+        echo "> DGPU_DEVICE_ID: $DGPU_DEVICE_ID"
+        echo "> DGPU_SS_IDS: $DGPU_SS_IDS"
+        echo "> DGPU_SS_VENDOR_ID: $DGPU_SS_VENDOR_ID"
+        echo "> DGPU_SS_DEVICE_ID: $DGPU_SS_DEVICE_ID"
+        exit
+    fi
+    
     echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
     sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' '/sys/bus/pci/devices/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
     echo "> Binding dGPU to VFIO driver..."
@@ -145,7 +146,7 @@ if [ "$SHARE_IGPU" = true ] ; then
     VGPU_TYPE_DIR=( $VGPU_TYPES_DIR )
     VGPU_TYPE=$(basename -- "${VGPU_TYPE_DIR}")
     # For further twaeking read: https://github.com/intel/gvt-linux/wiki/GVTg_Setup_Guide#53-create-vgpu-kvmgt-only
-    echo "> Create vGPU for mediated iGPU passthrough..."
+    echo "> Create temporary vGPU for mediated iGPU passthrough..."
     sudo bash -c "echo '${VGPU_UUID}' > '/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/${VGPU_TYPE}/create'"
      # display=on when using dmabuf
 
@@ -221,8 +222,7 @@ sudo qemu-system-x86_64 \
   -nographic \
   -serial none \
   -parallel none \
-  -boot menu=on \
-  -boot order=c \
+  -boot order=d \
   -k en-us \
   ${SMB_SHARE_PARAM} \
   ${SPICE_PARAM} \
@@ -231,6 +231,8 @@ sudo qemu-system-x86_64 \
   -drive "file=${INSTALL_IMG},index=1,media=cdrom" \
   -drive "file=${VIRTIO_WIN_IMG},index=2,media=cdrom" \
   -drive "file=${HELPER_ISO},index=3,media=cdrom" \
+  -fda "${VIRTIO_WIN_VFD}" \
+  -fdb "${AUTOUNATTEND_WIN_VFD}" \
   ${OS_DRIVE_PARAM} \
   -netdev "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/tap_ifup,downscript=${VM_FILES_DIR}/tap_ifdown,vhost=on" \
   ${GVTG_PARAM} \
@@ -250,12 +252,12 @@ sudo qemu-system-x86_64 \
   ${DMA_BUF_DISPLAY_PARAM}
 
 # This gets executed when the vm exits
-echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
 if [ "$DGPU_PASSTHROUGH" = true ] ; then
+    echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
     sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' > '/sys/bus/pci/drivers/vfio-pci/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
     sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
 fi
 if [ "$SHARE_IGPU" = true ] ; then
-    echo "> Remove Intel vGPU..."
+    echo "> Remove temporary Intel vGPU..."
     sudo bash -c "echo 1 > '/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID}/remove'"
 fi

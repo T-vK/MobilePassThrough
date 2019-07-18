@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+WIN10_IMG="$1"
+
+TMP="./tmp"
+ISO_FILES="${TMP}/iso-files"
+ISO_MP="${TMP}/iso-mountpoint"
+
+mkdir -p "${ISO_FILES}"
+mkdir -p "${ISO_MP}"
+sudo mount -t udf "${WIN10_IMG}" "${ISO_MP}"
+sudo cp -Rva ${ISO_MP}/* "${ISO_FILES}"
+sudo umount "${ISO_MP}"
+
+BOOT_DIR="${ISO_FILES}/efi/microsoft/boot"
+sudo mv "${BOOT_DIR}/cdboot.efi" "${BOOT_DIR}/tmp.efi"
+sudo mv "${BOOT_DIR}/cdboot_noprompt.efi" "${BOOT_DIR}/cdboot.efi"
+sudo mv "${BOOT_DIR}/tmp.efi" "${BOOT_DIR}/cdboot_noprompt.efi"
+
+
+BOOT_SECTOR_LENGTH="$(isoinfo -d -i "${WIN10_IMG}" | grep "Nsect " | grep -o "[^ ]*$")"
+STARTING_SECTOR="$(isoinfo -d -i ./vm-files/windows10.iso | grep "Bootoff " | grep -o "[^ ]*$")"
+dd if="${WIN10_IMG}" of="${ISO_FILES}/boot.img" bs=2048 count="${BOOT_SECTOR_LENGTH}" skip="${STARTING_SECTOR}"
+
+
+sudo mkisofs -o "${WIN10_IMG}.tmp.iso" -b "boot.img" -no-emul-boot -boot-load-seg 1984 -boot-load-size 4 \
+    -iso-level 2 -udf \
+    -J -l -D -N -joliet-long -relaxed-filenames "${ISO_FILES}"
+
+#sudo mkisofs \
+#    -b "boot.img" -no-emul-boot -boot-load-seg 1984 -boot-load-size 4 \
+#    -iso-level 2 -J -l -D -N -joliet-long -relaxed-filenames \
+#    -V "WINDOWS10_AUTOBOOT" \
+#    -o "${WIN10_IMG}.tmp.iso" "${ISO_FILES}"
+    
+#sudo mkisofs -D -r -V "WINDOWS10_AUTOBOOT" -cache-inodes -J -l -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -o "${WIN10_IMG}.tmp" "${ISO_FILES}"
+#sudo rm "${WIN10_IMG}"
+#sudo mv "${WIN10_IMG}.tmp.iso" "${WIN10_IMG}"
