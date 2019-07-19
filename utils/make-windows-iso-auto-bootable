@@ -1,38 +1,102 @@
 #!/usr/bin/env bash
 
+# Variable containing the path to the windows.iso
 WIN10_IMG="$1"
 
 TMP="./tmp"
 ISO_FILES="${TMP}/iso-files"
 ISO_MP="${TMP}/iso-mountpoint"
 
-mkdir -p "${ISO_FILES}"
-mkdir -p "${ISO_MP}"
-sudo mount -t udf "${WIN10_IMG}" "${ISO_MP}"
-sudo cp -Rva ${ISO_MP}/* "${ISO_FILES}"
-sudo umount "${ISO_MP}"
+#rm -rf "${TMP}"
+#mkdir -p "${ISO_FILES}"
+#mkdir -p "${ISO_MP}"
+#sudo mount -t udf "${WIN10_IMG}" "${ISO_MP}"
+#sudo cp -Rva ${ISO_MP}/* "${ISO_FILES}"
+#sudo umount "${ISO_MP}"
 
-BOOT_DIR="${ISO_FILES}/efi/microsoft/boot"
-sudo mv "${BOOT_DIR}/cdboot.efi" "${BOOT_DIR}/tmp.efi"
-sudo mv "${BOOT_DIR}/cdboot_noprompt.efi" "${BOOT_DIR}/cdboot.efi"
-sudo mv "${BOOT_DIR}/tmp.efi" "${BOOT_DIR}/cdboot_noprompt.efi"
+# Make modifications to the Windows ISO
+#BOOT_DIR="${ISO_FILES}/efi/microsoft/boot"
+#sudo mv "${BOOT_DIR}/cdboot.efi" "${BOOT_DIR}/tmp.efi"
+#sudo mv "${BOOT_DIR}/cdboot_noprompt.efi" "${BOOT_DIR}/cdboot.efi"
+#sudo mv "${BOOT_DIR}/tmp.efi" "${BOOT_DIR}/cdboot_noprompt.efi"
+
+# Extract the boot.img
+#BOOT_SECTOR_LENGTH="$(isoinfo -d -i "${WIN10_IMG}" | grep "Nsect " | grep -o "[^ ]*$")"
+#STARTING_SECTOR="$(isoinfo -d -i ./vm-files/windows10.iso | grep "Bootoff " | grep -o "[^ ]*$")"
+#dd if="${WIN10_IMG}" of="${ISO_FILES}/boot.img" bs=2048 count="${BOOT_SECTOR_LENGTH}" skip="${STARTING_SECTOR}"
 
 
-BOOT_SECTOR_LENGTH="$(isoinfo -d -i "${WIN10_IMG}" | grep "Nsect " | grep -o "[^ ]*$")"
-STARTING_SECTOR="$(isoinfo -d -i ./vm-files/windows10.iso | grep "Bootoff " | grep -o "[^ ]*$")"
-dd if="${WIN10_IMG}" of="${ISO_FILES}/boot.img" bs=2048 count="${BOOT_SECTOR_LENGTH}" skip="${STARTING_SECTOR}"
+# Extract boot load segment address and size
+BOOT_LOAD_SEG="$(dumpet -i "${WIN10_IMG}" | grep "Media load segment: " | cut -d ':' -f2 | cut -d ' ' -f2)"
+BOOT_LOAD_SIZE="$(dumpet -i "${WIN10_IMG}" | grep "Load Sectors: " | grep -o "[^:]*$" | cut -d ' ' -f2 | head -1)"
+
+# Extract meta data:
+SYSTEM_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "System id: " | cut -d ' ' -f3-)"
+#VOLUME_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Volume id: " | cut -d ' ' -f3-)" # Always uppercase
+VOLUME_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "ID '" | cut -d "'" -f2)"
+VOLUME_SET_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Volume set id: " | cut -d ' ' -f4-)"
+PUBLISHER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Publisher id: " | cut -d ' ' -f3-)"
+DATA_PREPARER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Data preparer id: " | cut -d ' ' -f4-)"
+APPLICATION_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Application id: " | cut -d ' ' -f3-)"
+COPYRIGHT_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Copyright file id: " | cut -d ' ' -f4-)"
+ABSTRACT_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Abstract file id: " | cut -d ' ' -f4-)"
+BIBLIOGRAPHIC_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Bibliographic file id: " | cut -d ' ' -f4-)"
+
+rm ".mkisofsrc"
+echo "APPI=${APPLICATION_ID}" >> ".mkisofsrc"
+echo "COPY=${COPYRIGHT_FILE_ID}" >> ".mkisofsrc"
+echo "ABST=${ABSTRACT_FILE_ID}" >> ".mkisofsrc"
+echo "BIBL=${BIBLIOGRAPHIC_FILE_ID}" >> ".mkisofsrc"
+echo "PREP=${DATA_PREPARER_ID}" >> ".mkisofsrc"
+echo "PUBL=${PUBLISHER_ID}" >> ".mkisofsrc"
+echo "SYSI=${SYSTEM_ID}" >> ".mkisofsrc"
+echo "VOLI=${VOLUME_ID}" >> ".mkisofsrc"
+echo "VOLS=${VOLUME_SET_ID}" >> ".mkisofsrc"
+sudo rm "${WIN10_IMG}.tmp.iso"
+sudo mkisofs \
+  -no-emul-boot \
+  -b boot/etfsboot.com \
+  -boot-load-seg "${BOOT_LOAD_SEG}" \
+  -boot-load-size "${BOOT_LOAD_SIZE}" \
+  -iso-level 2 \
+  -boot-info-table \
+  -udf \
+  -D \
+  -N \
+  -relaxed-filenames \
+  -o "${WIN10_IMG}.tmp.iso" \
+  "${ISO_FILES}"
+rm ".mkisofsrc"
+
+echo "BOOT_LOAD_SEG: ${BOOT_LOAD_SEG}"
+echo "BOOT_LOAD_SIZE: ${BOOT_LOAD_SIZE}"
+echo "-------"
+echo "SYSTEM_ID: ${SYSTEM_ID}"
+echo "VOLUME_ID: ${VOLUME_ID}"
+echo "VOLUME_SET_ID: ${VOLUME_SET_ID}"
+echo "PUBLISHER_ID: ${PUBLISHER_ID}"
+echo "DATA_PREPARER_ID: ${DATA_PREPARER_ID}"
+echo "APPLICATION_ID: ${APPLICATION_ID}"
+echo "COPYRIGHT_FILE_ID: ${COPYRIGHT_FILE_ID}"
+echo "ABSTRACT_FILE_ID: ${ABSTRACT_FILE_ID}"
+echo "BIBLIOGRAPHIC_FILE_ID: ${BIBLIOGRAPHIC_FILE_ID}"
 
 
-sudo mkisofs -o "${WIN10_IMG}.tmp.iso" -b "boot.img" -no-emul-boot -boot-load-seg 1984 -boot-load-size 4 \
-    -iso-level 2 -udf \
-    -J -l -D -N -joliet-long -relaxed-filenames "${ISO_FILES}"
+
+
+
+# Method from: https://www.g-loaded.eu/2007/04/25/how-to-create-a-windows-bootable-cd-with-mkisofs/
+#sudo mkisofs -o "${WIN10_IMG}.tmp.iso" -b "boot.img" -no-emul-boot -boot-load-seg 1984 -boot-load-size 4 \
+#    -iso-level 2 -udf \
+#    -J -l -D -N -joliet-long -relaxed-filenames "${ISO_FILES}"
 
 #sudo mkisofs \
 #    -b "boot.img" -no-emul-boot -boot-load-seg 1984 -boot-load-size 4 \
 #    -iso-level 2 -J -l -D -N -joliet-long -relaxed-filenames \
 #    -V "WINDOWS10_AUTOBOOT" \
 #    -o "${WIN10_IMG}.tmp.iso" "${ISO_FILES}"
-    
+
+
 #sudo mkisofs -D -r -V "WINDOWS10_AUTOBOOT" -cache-inodes -J -l -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -o "${WIN10_IMG}.tmp" "${ISO_FILES}"
 #sudo rm "${WIN10_IMG}"
 #sudo mv "${WIN10_IMG}.tmp.iso" "${WIN10_IMG}"

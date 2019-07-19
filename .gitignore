@@ -3,6 +3,7 @@
 /vm-files/vmshare
 /vm-files/*.fd
 /vm-files/*.iso
+/vm-files/*.vfd
 /vm-files/*.img
 /vm-files/MAC_ADDRESS.txt
 .*.swp
