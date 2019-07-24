@@ -30,12 +30,29 @@ ISO_MP="${TMP}/iso-mountpoint"
 BOOT_LOAD_SEG="$(dumpet -i "${WIN10_IMG}" | grep "Media load segment: " | cut -d ':' -f2 | cut -d ' ' -f2)"
 BOOT_LOAD_SIZE="$(dumpet -i "${WIN10_IMG}" | grep "Load Sectors: " | grep -o "[^:]*$" | cut -d ' ' -f2 | head -1)"
 
-# Extract meta data:
+EFI_STARTING_SECTOR="$(dumpet -i "${WIN10_IMG}" | grep "Load LBA: " | grep -o "[^:]*$" | cut -d ' ' -f2 | tail -1)"
+
+echo "EFI_STARTING_SECTOR: $EFI_STARTING_SECTOR"
+
+dd if="${WIN10_IMG}" of="${ISO_FILES}/efi.dmp" bs=2048 count=1 skip="${EFI_STARTING_SECTOR}"
+EFI_BOOT_LOAD_SIZE="$(file "${ISO_FILES}/efi.dmp" | grep -oP 'sectors (\d+)' | cut -d ' ' -f2)"
+echo "EFI_BOOT_LOAD_SIZE: $EFI_BOOT_LOAD_SIZE"
+rm -f "${ISO_FILES}/efi.dmp"
+dd if="${WIN10_IMG}" of="${ISO_FILES}/boot_efi.img" bs=2048 count="${EFI_BOOT_LOAD_SIZE}" skip="${EFI_STARTING_SECTOR}"
+
+mkdir -p /tmp/bbb
+sudo mount -o loop,ro "${ISO_FILES}/boot_efi.img" /tmp/bbb
+sudo cp /tmp/bbb/EFI/BOOT/BOOTX64.EFI "${ISO_FILES}/boot.efi"
+#sudo umount /tmp/bbb
+#sudo rm -f "${ISO_FILES}/boot.efi.img"
+exit
+
+# Extract meta data :
 SYSTEM_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "System id: " | cut -d ' ' -f3-)"
-#VOLUME_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Volume id: " | cut -d ' ' -f3-)" # Always uppercase
-VOLUME_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "ID '" | cut -d "'" -f2)"
+VOLUME_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Volume id: " | cut -d ' ' -f3-)"
 VOLUME_SET_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Volume set id: " | cut -d ' ' -f4-)"
-PUBLISHER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Publisher id: " | cut -d ' ' -f3-)"
+#PUBLISHER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Publisher id: " | cut -d ' ' -f3-)" # Always uppercase
+PUBLISHER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "ID '" | cut -d "'" -f2)"
 DATA_PREPARER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Data preparer id: " | cut -d ' ' -f4-)"
 APPLICATION_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Application id: " | cut -d ' ' -f3-)"
 COPYRIGHT_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Copyright file id: " | cut -d ' ' -f4-)"
@@ -58,12 +75,16 @@ sudo mkisofs \
   -b boot/etfsboot.com \
   -boot-load-seg "${BOOT_LOAD_SEG}" \
   -boot-load-size "${BOOT_LOAD_SIZE}" \
+  -eltorito-alt-boot \
+  -e boot.efi.img \
+  -no-emul-boot \
   -iso-level 2 \
   -boot-info-table \
   -udf \
   -D \
   -N \
   -relaxed-filenames \
+  -allow-lowercase \
   -o "${WIN10_IMG}.tmp.iso" \
   "${ISO_FILES}"
 rm ".mkisofsrc"
@@ -82,6 +103,15 @@ echo "ABSTRACT_FILE_ID: ${ABSTRACT_FILE_ID}"
 echo "BIBLIOGRAPHIC_FILE_ID: ${BIBLIOGRAPHIC_FILE_ID}"
 
 
+# Show difference between new and old image as reported by isoinfo
+echo
+echo "-------------- isoinfo diff -----------------"
+diff <(isoinfo -d -i "${WIN10_IMG}") <(isoinfo -d -i "${WIN10_IMG}.tmp.iso")
+
+# Show difference between new and old image as reported by dumpet
+echo
+echo " -------------- dumpet diff -----------------"
+diff <(dumpet -i "${WIN10_IMG}") <(dumpet -i "${WIN10_IMG}.tmp.iso")
 
 
 

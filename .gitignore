@@ -14,3 +14,4 @@ thirdparty
 /LookingGlass
 /utils/nvflash_linux
 /tmp
+/ovmf-with-vbios-patch

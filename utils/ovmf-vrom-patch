@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+PROJECT_DIR="${SCRIPT_DIR}/.."
+UTILS_DIR="${PROJECT_DIR}/utils"
+DISTRO=$("${UTILS_DIR}/distro-info")
+DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+
+sudo dnf install -y docker
+git clone https://github.com/bitthief/ovmf-with-vbios-patch.git
+cd ovmf-with-vbios-patch
+sudo docker build -t ovmf-vbios-patch docker-build
+
+docker run --rm -v "$PROJECT_DIR/ovmf-with-vbios-patch/build:/build" -v "$PROJECT_DIR/ovmf-with-vbios-patch/roms:/roms" ovmf-vbios-patch /ovmf/compile-ovmf.sh gtx-1050ti-maxq.rom

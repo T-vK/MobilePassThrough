@@ -12,6 +12,7 @@ sudo $DISTRO_UTILS_DIR/install-dependencies
 sudo $UTILS_DIR/set-kernel-params
 sudo $DISTRO_UTILS_DIR/nvidia-setup
 sudo $DISTRO_UTILS_DIR/looking-glass-setup
+sudo $UTILS_DIR/ovmf-vrom-patch
 
 echo "Make sure you didn't get any critical errors above."
 echo "Then reboot!"
