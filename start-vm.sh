@@ -122,7 +122,7 @@ if [ "$DGPU_PASSTHROUGH" = true ] ; then
     fi
     
     echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
-    sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' '/sys/bus/pci/devices/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
+    sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' > '/sys/bus/pci/devices/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
     echo "> Binding dGPU to VFIO driver..."
     sudo bash -c "echo '${DGPU_VENDOR_ID} ${DGPU_DEVICE_ID}' > '/sys/bus/pci/drivers/vfio-pci/new_id'"
     #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
