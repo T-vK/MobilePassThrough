@@ -91,4 +91,4 @@ rm -rf "${PROJECT_DIR}/helper-iso-files/tmp"
 
 echo "> Generating new iso..."
 rm -f "${PROJECT_DIR}/mobile-passthrough.iso"
-genisoimage -J -joliet-long -r -allow-lowercase -allow-multidot -o "${VM_FILES_DIR}/mobile-passthrough-helper.iso" "${HELPER_ISO}"
+genisoimage -J -joliet-long -r -allow-lowercase -allow-multidot -o "${HELPER_ISO}" "${PROJECT_DIR}/helper-iso-files"
