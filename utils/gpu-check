@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+LSHW_DISPLAY_OUTPUT="$(sudo lshw -C display)"
+if echo -e "$LSHW_DISPLAY_OUTPUT" | grep " vendor: " | grep -qi "intel"; then
+    export HAS_INTEL_GPU=true
+fi
+
+if echo -e "$LSHW_DISPLAY_OUTPUT" | grep " vendor: " | grep -qi "nvidia"; then
+    export HAS_NVIDIA_GPU=true
+fi
+
+if echo -e "$LSHW_DISPLAY_OUTPUT" | grep " vendor: " | grep -qi "amd"; then
+    export HAS_AMD_GPU=true
+fi
+
+if [ "$HAS_INTEL_GPU" = true ] && [ "$HAS_NVIDIA_GPU" = true ]; then
+    export SUPPORTS_OPTIMUS=true
+fi
+
+if [ "$HAS_INTEL_GPU" = true ] && [ "$HAS_AMD_GPU" = true ]; then
+    export SUPPORTS_DRI_PRIME=true
+fi

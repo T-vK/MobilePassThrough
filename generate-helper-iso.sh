@@ -39,9 +39,11 @@ else
     echo "> Visual C++ Redistributable Package 2017 x64 already exist in iso folder..."
 fi
 
-if [ ! -f "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host.exe" ]; then
-    echo "> Downloading Looking Glass Host application..."
-    wget "https://github.com/gnif/LookingGlass/releases/download/${LOOKING_GLASS_VERSION}/looking-glass-host.exe" -O "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host.exe"
+if [ ! -f "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host-setup.exe" ]; then
+    #echo "> Downloading Looking Glass Host application..."
+    #wget "https://github.com/gnif/LookingGlass/releases/download/${LOOKING_GLASS_VERSION}/looking-glass-host.exe" -O "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host.exe"
+    echo "> Copy Looking Glass Host application setup to where we need it..."
+    cp "${PROJECT_DIR}/LookingGlass/platform/Windows/looking-glass-host-setup.exe" "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host-setup.exe"
 else
     echo "> Looking Glass Host application already exist in iso folder..."
 fi
@@ -90,5 +92,6 @@ fi
 rm -rf "${PROJECT_DIR}/helper-iso-files/tmp"
 
 echo "> Generating new iso..."
-rm -f "${PROJECT_DIR}/mobile-passthrough.iso"
+rm -f "${HELPER_ISO}"
+echo "genisoimage -J -joliet-long -r -allow-lowercase -allow-multidot -o \"${HELPER_ISO}\" \"${PROJECT_DIR}/helper-iso-files\""
 genisoimage -J -joliet-long -r -allow-lowercase -allow-multidot -o "${HELPER_ISO}" "${PROJECT_DIR}/helper-iso-files"

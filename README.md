@@ -8,7 +8,7 @@ To achieve that goal I have written a collection of scripts that:
 
 - [x] Automatically install the required dependencies
 - [x] Automatically configure the kernel parameters to support GPU passthrough
-- [x] Automatically install Bumblebee and the Nvidia GPU driver
+- [x] Automatically install Bumblebee and the Nvidia GPU driver if required
 - [x] Automatically check if and to what extend your device is compatible with GPU passthrough.
 - [x] Automatically create and configure a virtual machine that is fully configured for GPU passthrough.
 - [x] Automatically download the Windows 10 installation iso from Microsoft.
@@ -25,15 +25,15 @@ To achieve that goal I have written a collection of scripts that:
 And there is also a lot of advanced stuff that I managed to fully automate, like:
 
  - [x] Automatically rebinding the dGPU to the vfio drivers (when the VM starts)
- - [x] Automatically rebinding the dGPU to the nvidia drivers (when the VM exits)
- - [x] Automatically creating a vGPU from the iGPU (when the VM starts) to allow sharing the iGPU with the VM (aka "mediated iGPU passthough" using GVT-g) (So your VM can safe a ton of battery life when it doesn't need the dGPU.)
+ - [x] Automatically rebinding the dGPU to the nvidia/amd drivers (when the VM exits)
+ - [x] Automatically creating a vGPU from the (Intel) iGPU (when the VM starts) to allow sharing the iGPU with the VM (aka "mediated iGPU passthough" using GVT-g) (So your VM can safe a ton of battery life when it doesn't need the dGPU.)
  - [x] Automatically remove the vGPU (when the VM exits)
 
 ## Limitations
 
-- The project is currently only compatible with Fedora 29 and Fedora 30 out of the box.
+- The project is currently only compatible with Fedora out of the box (Support for older Fedora versions may break over time because I don't test changes made to this repo against old Fedora versions.). (To add support for a new distro, copy one of the folders found in [utils](utils)) and adjust it for your distro.)
 - This project currently only supports Windows 10 x64 VMs. (For other Windows versions you have to figure out the driver installation etc. on your own.)
-- Your device needs to have an Intel CPU and an Nvidia GPU. (Although the compatibility-check script should actually work on any hardware. The other scripts however would need adjustments to run on other distributions.)
+- Only tested for Intel+Nvidea and Intel+AMD systems. (Although the compatibility-check script should actually work on any hardware.)
 - Expect bugs. I have only tested this on a handful of devices and I have constantly changed the scripts without testing everything every time.
 - VBIOS ROM extraction will likely fail because the nvidia kernel module is loaded. (You may not need the VBIOS ROM though.)
 - This project takes a couple of measures to circumvent Nvidia's infamous Error 43, which you normally see in the Windows device manager when you pass a mobile Nvidia GPU through to a Windows VM. But even with these measures, some systems will still show Error 43.
@@ -49,10 +49,12 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 - You might also have to disable secure boot in the UEFI.
   (Mainly to use Nvida's proprietary driver on Linux while your VM is not running.)
 - It might also be necessary to disable fastboot in the UEFI.
+- It is highly recommended to have your Linux installed in UEFI mode (rather than in legacy mode).
+  If you drive doesn't show up during the installation in UEFI mode, make sure the SATA mode is set to AHCI in the UEFI, even if you don't use SATA.
 
 ### Installation and configuration
 - Download and install [standard Fedora](https://getfedora.org/) or the [KDE version](https://spins.fedoraproject.org/kde/) (ideally in UEFI mode)
-- Make sure to create a user account (with administrator rights) when you are asked
+- Make sure to create a user account (with administrator rights) (in case you are asked)
 - Open a terminal and install git by typing the following, pressing enter after each line:
 
 ``` bash
@@ -68,7 +70,7 @@ sudo ./setup.sh # Dependency installation; kernel param config; bumblebee / nvid
 ``` bash
 cd MobilePassThrough # Enter the project directory
 sudo ./compatibility-check.sh # Check if your system is compatible
-# If the script says that your system is compatible you may succeed:
+# If the script says that your system is compatible you may proceed:
 ./generate-vm-config.sh # Create a config file
 # Follow the instructions in your terminal! Then continue:
 ./generate-helper-iso.sh # Generate an iso file containing tools, installers, drivers and a Batch script that we need later
@@ -90,7 +92,7 @@ spicy -h localhost -p 5900
 - window should appear giving a GUI to interact with the VM and it will say something like "press any key to boot from cd now".
 - Press any key quickly!
 - The Windows installer will show. Go through it, it should be simple enough.
-- During the installation you may have to manually pick a disk driver for the virtual disk to be recognized. Click "Browse" and select `?:\viostor\w10\amd64\` from the `virtio-win` CD Drive.
+- During the installation you may have to manually pick a disk driver for the virtual disk to be recognized. Click "Browse" and select `amd64\w10` from the `virtio-win` CD Drive.
 - You should set a password for your user account otherwise you'll have trouble with RDP.
 - Once Windows is installed, go to the virtual CD drive that contains the start.bat file and right-click it and click `Run as administrator` and make sure you didn't get any errors.
 - Reboot the VM.
@@ -108,7 +110,7 @@ sudo ./start-vm.sh
 - Then in the second terminal run:
 ``` bash
 cd MobilePassThrough # Enter the project directory
-./LookingGlass/client/build/looking-glass-client`
+./LookingGlass/client/build/looking-glass-client
 ```
 
 ## Requirements to get GPU-passthrough to work on mobile
@@ -118,7 +120,7 @@ cd MobilePassThrough # Enter the project directory
 
 - [ ] At least two GPUs (typically Intel's iGPU and an Nvidia GPU)  
     Note: If you have Thunderbolt 3, you might be able to use an eGPU. See: https://egpu.io  
-    Note2: Theoretically it's possible to get this to work with only one GPU, but then you wouldn't be able to use your host system directly while running the VM, not the mention like 50 other issues you'll run into.  
+    Note2: Theoretically it's possible to get this to work with only one GPU, but then you wouldn't be able to use your host system directly while running the VM, not to mention the like 50 other issues you'll run into.  
 
 - [ ] CPU needs to support `Intel VT-x` / `AMD-V`  
     Note: Unless your notebook is like 10 years old, the CPU should support this.    
@@ -134,7 +136,7 @@ cd MobilePassThrough # Enter the project directory
 - [ ] CPU needs to support `Intel VT-d` / AMD's `IOMMU`  
     Note: If you have an Intel CPU, you can [check if it's in this list](https://ark.intel.com/Search/FeatureFilter?productType=processors&VTD=true&MarketSegment=Mobile).  
 - [ ] Chipset to support `Intel VT-d` / AMD's `IOMMU`  
-    Note: If your CPU/chipset is from Intel, you search it in [this list](https://www.intel.com/content/www/us/en/products/chipsets/view-all.html) to check it it supports VT-d.  
+    Note: If your CPU/chipset is from Intel, you search it in [this list](https://www.intel.com/content/www/us/en/products/chipsets/view-all.html) to check if it supports VT-d.  
 - [ ] BIOS/UEFI needs to support `Intel VT-d` / AMD's `IOMMU`  
     Possible workaround: Modding your BIOS/UEFI using tools like UEFITool, AMIBCP etc. (See "UEFI / BIOS modding" below)  
 
@@ -158,7 +160,7 @@ We just need some smart people to fix one of these patches or to make them more 
 ## Potentially useful hardware tools
 
 [USB Programmer for BIOS/UEFI flashing or unbricking](https://www.aliexpress.com/item/-/32957821101.html)
-EDID Dummy Plugs for [HDMI](https://www.aliexpress.com/item/-/32919567161.html) and [Mini DisplayPort](https://www.aliexpress.com/item/-/32822066472.html) can be used to make your dGPU write to the framebuffer so that oyu can use [Looking Glass](https://looking-glass.hostfission.com/). (Your dGPU needs to be connected to your external HDMI or Display Port for that to work though... [This may be possible with some UEFI/BIOS modding](https://github.com/jscinoz/optimus-vfio-docs/issues/2#issuecomment-471234538).)
+EDID Dummy Plugs for [HDMI](https://www.aliexpress.com/item/-/32919567161.html) and [Mini DisplayPort](https://www.aliexpress.com/item/-/32822066472.html) can be used to make your dGPU write to the framebuffer so that you can use [Looking Glass](https://looking-glass.hostfission.com/). (Your dGPU needs to be connected to your external HDMI or Display Port for that to work though... [This may be possible with some UEFI/BIOS modding](https://github.com/jscinoz/optimus-vfio-docs/issues/2#issuecomment-471234538).)
 
 ## List of tested GPU-passthrough compatible devices
 
