@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}"
+PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
 UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-LOG_BASE_DIR="${SCRIPT_DIR}/logs"
+LOG_BASE_DIR="${PROJECT_DIR}/logs"
 
 # Enable these to mock the lshw output and iommu groups of other computers for testing purposes
 #MOCK_SET=1
@@ -220,7 +220,7 @@ fi
 if [ "${UEFI_VIRTUALIZATION_ENABLED}" = true ] && [ "${UEFI_IOMMU_ENABLED}" = true ]  && [ "${KERNEL_IOMMU_ENABLED}" = true ] && [ "${IOMMU_COMPATIBILITY_LVL}" -gt "0" ] ; then
     log_green "If you found a notebook that appears to be GPU passthrough compatible, please open an issue on Github and let me know."
     if [ "${IOMMU_COMPATIBILITY_LVL}" -gt "1" ] ; then
-        log_green "You may now proceed and run the generate-vm-config.sh script as mentioned in the README."
+        log_green "You may now proceed and run './mbpt.sh configure' as mentioned in the README."
     fi
 fi
 

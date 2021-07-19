@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}"
+PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
 UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-
-if [ "$1" == "--auto" ]; then
-    INTERACTIVE=false
-else
-    INTERACTIVE=true
-fi
 
 # If user.conf doesn't exist use the default.conf
 if [ -f "${PROJECT_DIR}/user.conf" ]; then
@@ -159,7 +153,7 @@ if [ "$SHARE_IGPU" = true ] ; then
         echo "> Creating a vGPU for mediated iGPU passthrough..."
         VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
         if [ "$?" = "1" ]; then
-            echo "> Failed creating a vGPU. Try again or reboot! Error: ${VGPU_UUID}"
+            echo "> Failed creating a vGPU. Try again. If you still get this error, you have to reboot. This seems to be a bug in Linux."
             exit 1
         fi
     fi

@@ -7,6 +7,9 @@ DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 VM_FILES_DIR="${PROJECT_DIR}/vm-files"
 
+mkdir -p "${PROJECT_DIR}/thirdparty"
+cd "${PROJECT_DIR}/thirdparty"
+
 sudo dnf install -y binutils-devel cmake texlive-gnu-freefont fontconfig-devel SDL2-devel SDL2_ttf-devel spice-protocol libX11-devel nettle-devel wayland-protocols-devel gcc libXScrnSaver-devel libXfixes-devel libXi-devel wayland-devel mingw64-gcc-c++ mingw32-nsis
 
 LOOKING_GLASS_VERSION="B3"
@@ -24,7 +27,7 @@ sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-l
 sudo bash -c "echo 'f /dev/shm/looking-glass ${TMP_USER_ID} ${TMP_USER_NAME} kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
 
 # Build the (Windows) host application
-cd "${PROJECT_DIR}"
+cd "${PROJECT_DIR}/thirdparty"
 wget https://developer.nvidia.com/capture_sdk/downloads/v8.0.4/linux -O ./nvidea_capture_api.tgz
 rm -rf ./Capture_Linux_v8.0.4
 tar -xvzf ./nvidea_capture_api.tgz 

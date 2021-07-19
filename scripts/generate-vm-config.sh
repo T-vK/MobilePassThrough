@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}"
+PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
 UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
@@ -67,7 +67,7 @@ interactiveCfg "Location of the virtio Windows driver disk." VIRTIO_WIN_IMG
 interactiveCfg "Location of helper iso or where to create it." HELPER_ISO
 interactiveCfg "Pass the dGPU through to the VM." DGPU_PASSTHROUGH
 interactiveCfg "Share the iGPU with the VM to allow using Optimus within the VM to save battery life" SHARE_IGPU
-interactiveCfg "dGPU driver used by the Linux host (nvidia, nouveau, amdgpu, radeom). (nouveau & radeon are untested)" HOST_DGPU_DRIVER
+interactiveCfg "dGPU driver used by the Linux host (nvidia, nouveau, amdgpu, radeon). (nouveau & radeon are untested)" HOST_DGPU_DRIVER
 interactiveCfg "The PCI address of your dGPU as obtained by 'lspci' or 'optimus lspci'. (01:00.0 if you use Bumblebee)" DGPU_PCI_ADDRESS
 interactiveCfg "The PCI address of your iGPU as obtained by 'lspci'. (Usually 00:02.0)" IGPU_PCI_ADDRESS
 interactiveCfg "Virtual input device mode for keyboard and mouse. (if usb-tablet doesn't work properly, you may want to switch to virtio)" VIRTUAL_INPUT_TYPE

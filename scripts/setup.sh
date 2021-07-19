@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}"
+PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
 UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+
+mkdir -p "${PROJECT_DIR}/thirdparty"
 
 source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
 sudo $DISTRO_UTILS_DIR/install-dependencies
 sudo $UTILS_DIR/set-kernel-params
+
 
 source "$UTILS_DIR/gpu-check"
 
@@ -30,8 +33,10 @@ fi
 
 sudo $UTILS_DIR/build-fake-battery-ssdt
 
+sudo $DISTRO_UTILS_DIR/vbios-finder-installer
+
 sudo $DISTRO_UTILS_DIR/looking-glass-setup
 
 echo "Make sure you didn't get any critical errors above."
 echo "Then reboot!"
-echo "After the reboot you can run the compatibility-check.sh script."
+echo "After the reboot you can check if your device is compatible by running: ./mbpt.sh check"
