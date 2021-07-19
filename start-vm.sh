@@ -48,9 +48,9 @@ else
     exit
 fi
 
-if [ ! -f "${WIN_VARS}" ]; then
+if [ ! -f "${OVMF_VARS_VM}" ]; then
     echo "> Creating OVMF_VARS copy for this VM..."
-    sudo cp "${OVMF_VARS}" "${WIN_VARS}"
+    sudo cp "${OVMF_VARS}" "${OVMF_VARS_VM}"
 fi
 
 if sudo which optirun &> /dev/null && sudo optirun echo > /dev/null ; then
@@ -109,7 +109,7 @@ fi
 
 if [ -z "$DGPU_ROM" ]; then
     echo "> Not using DGPU vBIOS override..."
-    DGPU_ROM_PARAM=""
+    DGPU_ROM_PARAM=",rombar=0"
 else
     echo "> Using DGPU vBIOS override..."
     DGPU_ROM_PARAM=",romfile=${DGPU_ROM}"
@@ -117,7 +117,7 @@ fi
 
 if [ -z "$IGPU_ROM" ]; then
     echo "> Not using DGPU vBIOS override..."
-    IGPU_ROM_PARAM=""
+    IGPU_ROM_PARAM=",rombar=0"
 else
     echo "> Using DGPU vBIOS override..."
     IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
@@ -150,12 +150,18 @@ fi
 if [ "$SHARE_IGPU" = true ] ; then
     echo "> Using mediated iGPU passthrough..."
     vgpu init # load required kernel modules
-    echo "> Creating a vGPU for mediated iGPU passthrough..."
-    vgpu remove "${IGPU_PCI_ADDRESS}" &> /dev/null # Ensure there are no vGPUs before creating a new one
-    VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
-    if [ "$?" = "1" ]; then
-        echo "> Failed creating a vGPU. Error: ${VGPU_UUID}"
-        exit 1
+
+    # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
+    #        So for now we can't create a new vGPU every time the VM starts.
+    #vgpu remove "${IGPU_PCI_ADDRESS}" &> /dev/null # Ensure there are no vGPUs before creating a new one
+    VGPU_UUID="$(vgpu get "${IGPU_PCI_ADDRESS}" | head -1)"
+    if [ "$VGPU_UUID" == "" ]; then
+        echo "> Creating a vGPU for mediated iGPU passthrough..."
+        VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
+        if [ "$?" = "1" ]; then
+            echo "> Failed creating a vGPU. Try again or reboot! Error: ${VGPU_UUID}"
+            exit 1
+        fi
     fi
 
     if [ "$USE_DMA_BUF" = true ] ; then
@@ -168,7 +174,7 @@ if [ "$SHARE_IGPU" = true ] ; then
         GVTG_DISPLAY_STATE="off"
     fi
 
-    GVTG_PARAM="-device vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},rombar=0,x-igd-opregion=on${IGPU_ROM_PARAM},display=${GVTG_DISPLAY_STATE}"
+    GVTG_PARAM="-device vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on${IGPU_ROM_PARAM},display=${GVTG_DISPLAY_STATE}"
 else
     echo "> Not using mediated iGPU passthrough..."
     GVTG_PARAM=""
@@ -193,7 +199,43 @@ else
     QXL_VGA_PARAM=""
 fi
 
-if [ -z "$USB_DEVICES" ]; then
+if [ "$USE_FAKE_BATTERY" = true ] ; then
+    echo "> Using fake battery..."
+    if [ ! -f "${VM_FILES_DIR}/fake-battery.aml" ] ; then
+        mv "${PROJECT_DIR}/acpi-tables/fake-battery.aml" "${VM_FILES_DIR}/fake-battery.aml"
+    fi
+    FAKE_BATTERY_SSDT_TABLE="$(readlink -f "${VM_FILES_DIR}/fake-battery.aml")"
+    ACPI_TABLE_PARAM="-acpitable file=${FAKE_BATTERY_SSDT_TABLE}"
+else
+    echo "> Not using fake battery..."
+    ACPI_TABLE_PARAM=""
+fi
+
+if [ "$PATCH_OVMF_WITH_VROM" = true ] ; then
+    PATCHED_OVMF_FILES_DIR="${VM_FILES_DIR}/patched-ovmf-files"
+    if [ "$DGPU_ROM" != "" ] ; then
+        echo "> Using patched OVMF..."
+        DGPU_ROM_NAME="$(basename "${DGPU_ROM}")"
+        if [ ! -f "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd" ] || [ ! -f "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd" ] ; then
+            DGPU_ROM_DIR="$(dirname "${DGPU_ROM}")"
+            mkdir -p "${PATCHED_OVMF_FILES_DIR}/tmp-build"
+            echo "> Patching OVMF with your vBIOS ROM. This may take a few minutes!"
+            sleep 5 # Ensure the user can read this first
+            sudo docker run --rm -ti -v "${PATCHED_OVMF_FILES_DIR}/tmp-build:/build:z" -v "${DGPU_ROM_DIR}:/roms:z" -e "VROM=${DGPU_ROM_NAME}" ovmf-vbios-patch
+            sudo mv "${PATCHED_OVMF_FILES_DIR}/tmp-build/OVMF_CODE.fd" "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"
+            sudo mv "${PATCHED_OVMF_FILES_DIR}/tmp-build/OVMF_VARS.fd" "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd"
+            sudo rm -rf "${PATCHED_OVMF_FILES_DIR}/tmp-build"
+        fi
+        OVMF_CODE="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"
+        OVMF_VARS_VM="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd"
+    else
+        echo "> Not using patched OVMF..."
+    fi
+else
+    echo "> Not using patched OVMF..."
+fi
+
+if [ -z "$USB_DEVICES" ] ; then
     echo "> Not using USB passthrough..."
     USB_DEVICE_PARAMS=""
 else
@@ -218,7 +260,7 @@ else
 fi
 
 echo "> Starting the Virtual Machine..."
-# Refer https://github.com/saveriomiroddi/qemu-pinning for how to set your cpu affinity properly
+# Refer to https://github.com/saveriomiroddi/qemu-pinning for information on how to set your cpu affinity properly
 sudo qemu-system-x86_64 \
   -name "${VM_NAME}" \
   -machine type=q35,accel=kvm \
@@ -239,12 +281,12 @@ sudo qemu-system-x86_64 \
   ${SMB_SHARE_PARAM} \
   ${SPICE_PARAM} \
   -drive "if=pflash,format=raw,readonly=on,file=${OVMF_CODE}" \
-  -drive "if=pflash,format=raw,file=${WIN_VARS}" \
+  -drive "if=pflash,format=raw,file=${OVMF_VARS_VM}" \
   -drive "file=${INSTALL_IMG},index=1,media=cdrom" \
   -drive "file=${VIRTIO_WIN_IMG},index=2,media=cdrom" \
   -drive "file=${HELPER_ISO},index=3,media=cdrom" \
   ${OS_DRIVE_PARAM} \
-  -netdev "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/tap_ifup,downscript=${VM_FILES_DIR}/tap_ifdown,vhost=on" \
+  -netdev "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on" \
   ${GVTG_PARAM} \
   -device ich9-intel-hda \
   -device hda-output \
@@ -252,6 +294,7 @@ sudo qemu-system-x86_64 \
   ${DGPU_PARAM} \
   -device virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS} \
   -device pci-bridge,addr=12.0,chassis_nr=2,id=head.2 \
+  ${ACPI_TABLE_PARAM} \
   -usb \
   ${VIRTUAL_KEYBOARD_PARAM} \
   ${USB_DEVICE_PARAMS} \
@@ -273,6 +316,9 @@ if [ "$DGPU_PASSTHROUGH" = true ] ; then
     driver bind "${DGPU_PCI_ADDRESS}" "${HOST_DGPU_DRIVER}"
 fi
 if [ "$SHARE_IGPU" = true ] ; then
-    echo "> Remove Intel vGPU..."
-    vgpu remove "${IGPU_PCI_ADDRESS}" "${VGPU_UUID}"
+    # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
+    #        So for now we can't create a new vGPU every time the VM starts.
+    echo "> Keeping Intel vGPU for next VM start..."
+    #echo "> Remove Intel vGPU..."
+    #vgpu remove "${IGPU_PCI_ADDRESS}" "${VGPU_UUID}"
 fi

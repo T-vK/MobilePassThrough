@@ -13,6 +13,8 @@ sudo $UTILS_DIR/set-kernel-params
 
 source "$UTILS_DIR/gpu-check"
 
+sudo $UTILS_DIR/ovmf-vbios-patch-setup
+
 if [ $HAS_INTEL_GPU = true ]; then
     sudo $DISTRO_UTILS_DIR/intel-setup
 fi
@@ -25,6 +27,8 @@ fi
 if [ $SUPPORTS_OPTIMUS = true ]; then
     sudo $DISTRO_UTILS_DIR/bumblebee-setup
 fi
+
+sudo $UTILS_DIR/build-fake-battery-ssdt
 
 sudo $DISTRO_UTILS_DIR/looking-glass-setup
 

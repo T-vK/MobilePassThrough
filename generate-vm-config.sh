@@ -61,7 +61,7 @@ interactiveCfg "Path to a dGPU ROM. (Optional)" DGPU_ROM
 interactiveCfg "Path to a iGPU ROM. (Optional)" IGPU_ROM
 interactiveCfg "Path to a folder to share with the VM via SMB. (Optional)" SMB_SHARE_FOLDER
 interactiveCfg "Location of OVMF_VARS.fd." OVMF_VARS
-interactiveCfg "Where to create Creating a copy of OVMF_VARS.fd (containing the executable firmware code and but the non-volatile variable store) for the VM?" WIN_VARS
+interactiveCfg "Where to create Creating a copy of OVMF_VARS.fd (containing the executable firmware code and but the non-volatile variable store) for the VM?" OVMF_VARS_VM
 interactiveCfg "Location of OVMF_CODE.fd." OVMF_CODE
 interactiveCfg "Location of the virtio Windows driver disk." VIRTIO_WIN_IMG
 interactiveCfg "Location of helper iso or where to create it." HELPER_ISO
@@ -87,6 +87,8 @@ interactiveCfg "Enable spice. (Recommended for Looking Glass, required to instal
 interactiveCfg "Port to use for spice." SPICE_PORT
 interactiveCfg "Enable dma-buf. (Yet another way to get display access to your VM)" USE_DMA_BUF
 interactiveCfg "Enable QXL. (Required for Windows installation; has to be disabled after the Nvidia driver has been installed!)" USE_QXL
+interactiveCfg "Provide the VM with a fake battery (Highly recommended to avoid Error 43)" USE_FAKE_BATTERY
+interactiveCfg "Patch OVMF with your dGPU ROM if you supply one. (Highly recommended to avoid Error 43)" PATCH_OVMF_WITH_VROM
 interactiveCfg "List of USB devices to pass through. (Semicolon separated, e.g. vendorid=0x0b12,productid=0x9348;vendorid=0x0b95,productid=0x1790)" USB_DEVICES
 # TODO: Make selecting USB devices easier
 # TODO: Auto detect PCI addresses for GPUs

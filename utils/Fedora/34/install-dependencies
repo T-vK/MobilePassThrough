@@ -3,7 +3,7 @@
 echo "Updating software..."
 sudo dnf update -y
 echo "Installing some useful tools..."
-sudo dnf install -y wget curl vim screen git crudini lshw msr-tools sysfsutils tunctl remmina samba spice-gtk-tools genisoimage uuid
+sudo dnf install -y wget curl vim screen git crudini lshw msr-tools sysfsutils tunctl remmina samba spice-gtk-tools genisoimage uuid acpica-tools docker
 echo "Installing virtualization software..."
 sudo dnf install -y qemu #@virtualization
 

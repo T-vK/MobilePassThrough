@@ -38,6 +38,14 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 - VBIOS ROM extraction will likely fail because the nvidia kernel module is loaded. (You may not need the VBIOS ROM though.)
 - This project takes a couple of measures to circumvent Nvidia's infamous Error 43, which you normally see in the Windows device manager when you pass a mobile Nvidia GPU through to a Windows VM. But even with these measures, some systems will still show Error 43.
 
+## Measures taken agains error 43
+
+ - Hide that the VM is a VM
+ - Change the vendor ID
+ - Provide the VM with a fake battery
+ - Provide the VM with the vBios ROMs
+ - Patch OVMF, hardcoding your dGPU vBIOS ROM in it
+
 ## Screenshot of the compatibility-check script
 ![example output](screenshots/example-output.png)
 
