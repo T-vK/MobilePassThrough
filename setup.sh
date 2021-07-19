@@ -21,7 +21,7 @@ fi
 if [ $HAS_AMD_GPU = true ]; then
     sudo $DISTRO_UTILS_DIR/amd-setup
 fi
-if [ $HAS_NVIDEA_GPU = true ]; then
+if [ $HAS_NVIDIA_GPU = true ]; then
     sudo $DISTRO_UTILS_DIR/nvidia-setup
 fi
 if [ $SUPPORTS_OPTIMUS = true ]; then

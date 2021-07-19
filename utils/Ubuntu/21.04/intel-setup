@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+PROJECT_DIR="${SCRIPT_DIR}/../../.."
+UTILS_DIR="${PROJECT_DIR}/utils"
+DISTRO=$("${UTILS_DIR}/distro-info")
+DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+VM_FILES_DIR="${PROJECT_DIR}/vm-files"
+
+source "$DISTRO_UTILS_DIR/kernel-param-utils"
+
+#TODO: verify if that actually works:
+echo "Allow using external monitor for notebooks that have the port wired to the dGPU directly"
+sudo apt install -y intel-gpu-tools
+sudo intel-virtual-output
+#example usage: xrandr –output eDP1 –mode 1920×1080 –output HDMI1 –mode 1920×1080 –right-of eDP1

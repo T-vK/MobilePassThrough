@@ -17,3 +17,4 @@ thirdparty
 /utils/nvflash_linux
 /VBiosFinder
 /helper-iso-files/drivers
+*.asc
