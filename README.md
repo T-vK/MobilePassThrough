@@ -30,6 +30,9 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
  - [x] Automatically rebinding the dGPU to the nvidia/amd drivers (when the VM exits)
  - [x] Automatically creating a vGPU from the (Intel) iGPU (when the VM starts) to allow sharing the iGPU with the VM (aka "mediated iGPU passthough" using GVT-g) (So your VM can safe a ton of battery life when it doesn't need the dGPU.)
 
+## Screenshot of the compatibility check (./mbpt.sh check)
+![example output](screenshots/example-output.png)
+
 ## Currently supported distributions
 
  - Fedora 34
@@ -39,7 +42,7 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 
 - The project is currently only compatible with Fedora and Ubuntu out of the box (Support for older Fedora/Ubuntu versions may break over time because I don't test changes made to this repo against older distributions.). (To add support for a new distro, copy one of the folders found in [utils](utils)) and adjust it for your distro.)
 - This project currently only supports Windows 10 x64 VMs and hopefully Windows 11 x64 VMs at some point. (For older Windows versions you have to figure out the driver installation etc. on your own.)
-- Only tested for Intel+Nvidea and Intel+AMD systems. (Although the compatibility-check script should actually work on any hardware.)
+- Only tested for Intel+Nvidea and Intel+AMD systems. (Although the compatibility-check (./mbpt.sh check) should actually work on any hardware.)
 - Expect bugs. I have only tested this on a handful of devices and I have constantly changed the scripts without testing everything every time.
 - Automated vBIOS ROM extraction will fail in most cases. You might have to extract it from a BIOS update. (You may not need the vBIOS ROM though.)
 - This project takes a couple of measures to circumvent Nvidia's infamous Error 43, which you normally see in the Windows device manager when you pass a mobile Nvidia GPU through to a Windows VM. But even with these measures, some systems will still show Error 43. 
@@ -52,10 +55,8 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
  - Provide the VM with a fake battery
  - Provide the VM with the vBios ROMs
  - Patch OVMF, hardcoding your dGPU vBIOS ROM in it
- - (Another measure you can take yourself is installing a recent Nvidia driver in your VM. See [this](https://nvidia.custhelp.com/app/answers/detail/a_id/5173/~/geforce-gpu-passthrough-for-windows-virtual-machine-%28beta%29))
-
-## Screenshot of the compatibility-check script
-![example output](screenshots/example-output.png)
+ - (Another measure you can scripttake yourself is installing a recent Nvidia driver in your VM. See [this](https://nvidia.custhelp.com/app/answers/detail/a_id/5173/~/geforce-gpu-passthrough-for-windows-virtual-machine-%28beta%29))
+ - Other projects that may help, but are very outdated and currently don't work: [NVIDIA-vBIOS-VFIO-Patcher](https://github.com/Matoking/NVIDIA-vBIOS-VFIO-Patcher), [nvidia-kvm-patcher](https://github.com/sk1080/nvidia-kvm-patcher).  
 
 ## How to use?
 
@@ -77,7 +78,7 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 sudo dnf install git -y # Install git
 git clone https://github.com/T-vK/MobilePassThrough.git # Clone the project
 cd MobilePassThrough # Enter the project directory
-sudo ./setup.sh # Dependency installation; kernel param config; bumblebee / nvidia driver installation
+./mbpt.sh setup # Dependency installation; kernel param config; bumblebee / nvidia driver installation; and much more ...
 ```
 
 - Reboot your system
@@ -85,11 +86,11 @@ sudo ./setup.sh # Dependency installation; kernel param config; bumblebee / nvid
 
 ``` bash
 cd MobilePassThrough # Enter the project directory
-sudo ./compatibility-check.sh # Check if your system is compatible
+./mbpt.sh check # Check if your system is compatible
 # If the script says that your system is compatible you may proceed:
-./generate-vm-config.sh # Create a config file
+./mbpt.sh configure # Create a config file
 # Follow the instructions in your terminal! Then continue:
-./generate-helper-iso.sh # Generate an iso file containing tools, installers, drivers and a Batch script that we need later
+./mbpt.sh iso # Generate an iso file containing tools, installers, drivers and a Batch script that we need later
 ```
 
 ### Installation of Windows 10 in the VM
@@ -97,7 +98,7 @@ sudo ./compatibility-check.sh # Check if your system is compatible
 - Open TWO terminals, in the first one type:
 ``` bash
 cd MobilePassThrough # Enter the project directory
-sudo ./start-vm.sh # Start the VM for the first time
+./mbpt.sh start # Start the VM for the first time
 # Make sure you didn't get any critical errors
 ```
 
@@ -118,7 +119,7 @@ In the future when you want to start the VM, you can open 2 terminals:
 - In the first one run:
 ``` bash
 cd MobilePassThrough # Enter the project directory
-sudo ./start-vm.sh
+./mbpt.sh start
 ```
 
 - Open Remmina and connect to `rdp://192.168.99.2`
@@ -126,7 +127,52 @@ sudo ./start-vm.sh
 - Then in the second terminal run:
 ``` bash
 cd MobilePassThrough # Enter the project directory
-./LookingGlass/client/build/looking-glass-client
+cd ./thirdparty/LookingGlass/client/build/ # Enter the directoy containing the looking glass client executable
+./looking-glass-client # Run the looking glass client
+```
+
+## How to use mbpt.sh
+
+```
+$ ./mbpt.sh help
+mbpt.sh COMMAND [ARG...]
+mbpt.sh [ -h | --help ]
+
+mbpt.sh is a wrapper script for a collection of tools that help with GPU passthrough on mobile devices like notebooks and convertibles.
+
+Options:
+  -h, --help       Print usage
+  -v, --version    Print version information
+
+Commands:
+    setup        Install required dependencies and set required kernel parameters
+    check        Check if and to what degree your notebook is capable of running a GPU passthrough setup
+    configure    Interactively guides you through the creation of your config file
+    iso          Generate a helper iso file that contains required drivers and a helper-script for your Windows VM
+    start        Start your VM
+    vbios        Dump the vBIOS ROM from the running system or extract it from a BIOS update
+
+Examples:
+    # Install required dependencies and set required kernel parameters
+    mbpt.sh setup
+
+    # Check if and to what degree your notebook is capable of running a GPU passthrough setup
+    mbpt.sh check
+
+    # Interactively guides you through the creation of your config file
+    mbpt.sh confi`gure
+
+    # Generate a helper iso file that contains required drivers and a helper-script for your Windows VM
+    mbpt.sh iso
+
+    # Start your VM
+    mbpt.sh start
+
+    # Dump the vBIOS ROM of the GPU with the PCI address 01:00.0 to ./my-vbios.rom (This will most likely fail)
+    mbpt.sh vbios dump 01:00.0 ./my-vbios.rom
+
+    # Extract all the vBIOS ROMs of a given BIOS update to the directory ./my-roms
+    mbpt.sh vbios extract /path/to/my-bios-update.exe ./my-roms
 ```
 
 ## Requirements to get GPU-passthrough to work on mobile
@@ -162,11 +208,6 @@ cd MobilePassThrough # Enter the project directory
 - The GPU you want to pass through, has to be in an IOMMU group that doesn't have other devices in it that the host system needs.  
     Possible workaround: You might be able to tear the groups further apart using the ACS override patch, but it's no magic cure, there are drawbacks.  
 
-- When using an Nvidia dGPU for the passthrough, you might have to patch your GPU VBIOS ROM using [NVIDIA-vBIOS-VFIO-Patcher](https://github.com/Matoking/NVIDIA-vBIOS-VFIO-Patcher) or the OvmfPkg using [arne-claey's OvmfPkg patch](https://github.com/jscinoz/optimus-vfio-docs/issues/2) or patch the Nvidia driver using [nvidia-kvm-patcher](https://github.com/sk1080/nvidia-kvm-patcher).  
-    Note: Loading modded vBIOS ROMS should be pretty safe as the ROM gets deleted after every GPU shutdown anyway afaik.  
-    Note2: The `nvidia-kvm-patcher` is pretty buggy and very outdated and you'll most likely not get it to work especially with recent drivers. I haven't had any success with any driver so far.  
-    Note3: I haven't been able to get `NVIDIA-vBIOS-VFIO-Patcher` to work yet.  
-
 
 The last point really seems to be the biggest hurdle, but since it's just a software issue, it should be possible to get this to work.  
 We just need some smart people to fix one of these patches or to make them more accessible.
@@ -177,7 +218,7 @@ We just need some smart people to fix one of these patches or to make them more 
 [USB Programmer for BIOS/UEFI flashing or unbricking](https://www.aliexpress.com/item/4001045543107.html)
 EDID Dummy Plugs for [HDMI](https://www.aliexpress.com/item/-/32919567161.html) and [Mini DisplayPort](https://www.aliexpress.com/item/-/32822066472.html) can be used to make your dGPU write to the framebuffer so that you can use [Looking Glass](https://looking-glass.hostfission.com/). (Your dGPU needs to be connected to your external HDMI or Display Port for that to work though... [This may be possible with some UEFI/BIOS modding](https://github.com/jscinoz/optimus-vfio-docs/issues/2#issuecomment-471234538).)
 
-## List of tested GPU-passthrough compatible devices
+## List of devices tested for GPU-passthrough compatibility
 
 Check out: https://gpu-passthrough.com/
 
@@ -199,11 +240,27 @@ There are many BIOS modding forums out there with lots of people who are more th
  - I'd also put Looking Glass into the startup folder so that it runs automatically every time.
 
 ## Known issues
-- Sometimes the start-vm.sh script will fail to start the VM because of this error: "echo: write error: No space left on device". It happens while attempting to create a vGPU for the iGPU. I have no clue why this happens. Sometimes it works if you just try it again, but other times you actually have to reboot the host system.
+- Sometimes the `./mbpt.sh start` command will fail to start the VM because of this error: "echo: write error: No space left on device". It happens while attempting to create a vGPU for the iGPU. I have no clue why this happens. Sometimes it works if you just try it again, sometimes you need to wait a few minutes before retrying, but other times you actually have to reboot the host system.
 
 ## Credits
 
-Credits to [Wendell from Level1Techs](https://level1techs.com/) for his GPU passthrough guides/videos and [Misairu-G for his Optimus laptop dGPU passthrough guide](https://gist.github.com/Misairu-G/616f7b2756c488148b7309addc940b28).
+Credits to [Wendell from Level1Techs](https:`//level1techs.com/) for his GPU passthrough guides/videos and [Misairu-G for his Optimus laptop dGPU passthrough guide](https://gist.github.com/Misairu-G/616f7b2756c488148b7309addc940b28).
 Without them I would have never even thought about creating this project. Thank you so much!!
 
 Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for adding support for Ubuntu!
+
+## TODO
+
+- Add nuveau driver compatibility
+- Allow the user to decide if he wants bumblebee or not
+- More detailed output about how the device is muxed
+- Fix unattended Windows installation
+- Create a bootable live version of this project
+- Create packages (deb, rpm, etc)
+- Add compatibility for Arch, Debian, etc...
+- Make this project work better on systems that already have a non-default GPU driver installed
+- Make it easy to uninstall the dependencies and undo the changes to the systm config (like kernel parameters)
+- Find a way to circumvent Error 43 for AMD GPUs like the `Radeon RX Vega M GL`
+- Reduce the size of the ovmf-vbios-patch Docker image
+- Make the USB passthrough device selection easier (i.e. display a list of devices that can be selected)
+- Look into hotplugging and check if the GPU can be hotplugged during VM runtime

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}"
+PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
 UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
@@ -43,7 +43,7 @@ if [ ! -f "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host-setup.exe" ]; 
     #echo "> Downloading Looking Glass Host application..."
     #wget "https://github.com/gnif/LookingGlass/releases/download/${LOOKING_GLASS_VERSION}/looking-glass-host.exe" -O "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host.exe"
     echo "> Copy Looking Glass Host application setup to where we need it..."
-    cp "${PROJECT_DIR}/LookingGlass/platform/Windows/looking-glass-host-setup.exe" "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host-setup.exe"
+    cp "${PROJECT_DIR}/thirdparty/LookingGlass/platform/Windows/looking-glass-host-setup.exe" "${PROJECT_DIR}/helper-iso-files/bin/looking-glass-host-setup.exe"
 else
     echo "> Looking Glass Host application already exist in iso folder..."
 fi
