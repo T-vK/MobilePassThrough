@@ -13,3 +13,4 @@ thirdparty
 /LookingGlass
 /utils/nvflash_linux
 /VBiosFinder
+*.asc
