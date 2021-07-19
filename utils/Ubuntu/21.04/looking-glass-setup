@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+PROJECT_DIR="${SCRIPT_DIR}/../../.."
+UTILS_DIR="${PROJECT_DIR}/utils"
+DISTRO=$("${UTILS_DIR}/distro-info")
+DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+VM_FILES_DIR="${PROJECT_DIR}/vm-files"
+
+sudo apt install binutils-dev cmake fonts-freefont-ttf libfontconfig1-dev libegl-dev libspice-protocol-dev nettle-dev libx11-dev libxi-dev libxinerama-dev libxss-dev libwayland-dev wayland-protocols
+
+LOOKING_GLASS_VERSION="B3"
+
+# Build the (Linux) client application
+git clone --single-branch --branch "${LOOKING_GLASS_VERSION}" --depth 1 --recursive https://github.com/gnif/LookingGlass.git
+mkdir  LookingGlass/client/build
+cd LookingGlass/client/build
+cmake ../
+make
+
+TMP_USER_NAME="$(logname)"
+TMP_USER_ID="$(id -u "$TMP_USER_NAME")"
+sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
+sudo bash -c "echo 'f /dev/shm/looking-glass ${TMP_USER_ID} ${TMP_USER_NAME} kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
+
+# Build the (Windows) host application
+cd "${PROJECT_DIR}"
+wget https://developer.nvidia.com/capture_sdk/downloads/v8.0.4/linux -O ./nvidea_capture_api.tgz
+rm -rf ./Capture_Linux_v8.0.4
+tar -xvzf ./nvidea_capture_api.tgz 
+rm ./nvidea_capture_api.tgz
+rm -rf ./LookingGlass/Capture_Linux_v8.0.4
+mv ./Capture_Linux_v8.0.4 ./LookingGlass/
+cd LookingGlass
+cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_TOOLCHAIN_FILE=./host/toolchain-mingw64.cmake -DNVFBC_SDK='./Capture_Linux_v8.0.4' -DUSE_NVFBC=1 ./host
+make
+
+#wget "https://ci.appveyor.com/api/projects/rainers/visuald/artifacts/cv2pdb.exe?job=Environment%3A%20os%3DVisual%20Studio%202015%2C%20VS%3D14%2C%20APPVEYOR_BUILD_WORKER_IMAGE%3DVisual%20Studio%202015" -O "cv2pdb.exe"
+#wine './cv2pdb.exe' './looking-glass-host.exe'
+makensis './platform/Windows/installer.nsi'
