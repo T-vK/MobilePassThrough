@@ -7,7 +7,7 @@ DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 VM_FILES_DIR="${PROJECT_DIR}/vm-files"
 
-sudo apt install binutils-dev cmake fonts-freefont-ttf libfontconfig1-dev libegl-dev libspice-protocol-dev nettle-dev libx11-dev libxi-dev libxinerama-dev libxss-dev libwayland-dev wayland-protocols
+sudo apt install binutils binutils-multiarch-dev cmake texlive-fonts-recommended fonts-freefont-ttf libfontconfig-dev libegl-dev libspice-protocol-dev libsdl2-dev nettle-dev libx11-dev libxi-dev libxinerama-dev libxss-dev libwayland-dev wayland-protocols
 
 LOOKING_GLASS_VERSION="B3"
 
