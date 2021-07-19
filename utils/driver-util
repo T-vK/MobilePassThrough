@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+
+COMMAND="$1"
+
+# Get driver currently used by the given PCI device
+# Parameter 1: PCI address of the device (format: XX:XX.X)
+# stdout: The name of the driver
+# returns: 0 on success; 1 on error
+function get() {
+    local PCI_ADDRESS="$1"
+    sudo lspci -k | grep -A 4 "${PCI_ADDRESS}" | grep -oP "Kernel driver in use: \K.+" | head -1
+}
+
+# Bind the given driver to the given PCI device
+# Parameter 1: PCI address of the device (format: XX:XX.X)
+# Parameter 2: Name of the driver (As shown in lspci -vvv)
+# returns: 0 on success; 1 on error
+function bind() {
+    local PCI_ADDRESS="$1"
+    local DRIVER="$2"
+    local CURRENT_DRIVER="$(get "${PCI_ADDRESS}")"
+
+    if [ "$CURRENT_DRIVER" != "" ]; then 
+        if [ "$CURRENT_DRIVER" = "$DRIVER" ]; then
+            return 0
+        else
+            unbind "${PCI_ADDRESS}" "${CURRENT_DRIVER}"
+        fi
+    fi
+    
+    if ! sudo bash -c "echo '0000:${PCI_ADDRESS}' > '/sys/bus/pci/drivers/${DRIVER}/bind'" &> /dev/null ; then
+        local IDS=$(sudo lspci -n -s "${PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
+        local VENDOR_ID=$(echo "${IDS}" | cut -d ":" -f1)
+        local DEVICE_ID=$(echo "${IDS}" | cut -d ":" -f2)
+        sudo bash -c "echo '${VENDOR_ID} ${DEVICE_ID}' > '/sys/bus/pci/drivers/${DRIVER}/new_id'"
+    fi
+    #sudo bash -c "echo 'options vfio-pci ids=${VENDOR_ID}:${DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
+    #sudo bash -c "echo '8086:1901' > '/sys/bus/pci/drivers/${DRIVER}/new_id'"
+}
+
+# Unbind the driver of the given PCI device
+# Parameter 1: PCI address of the device (format: XX:XX.X)
+# Parameter 2 (optional): Name of the driver (As shown in lspci -vvv)
+# returns: 0 on success; 1 on error
+function unbind() {
+    local PCI_ADDRESS="$1"
+    local DRIVER="$2"
+    if [ "$DRIVER" = "" ]; then
+        DRIVER="$(get "${PCI_ADDRESS}")"
+    fi
+    if [ "$DRIVER" != "" ]; then
+        sudo bash -c "echo '0000:${PCI_ADDRESS}' > '/sys/bus/pci/drivers/${DRIVER}/unbind'"
+        #sudo bash -c "echo '0000:${PCI_ADDRESS}' > '/sys/bus/pci/devices/0000:${PCI_ADDRESS}/driver/unbind'"
+        #sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' > '/sys/bus/pci/drivers/vfio-pci/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
+    fi
+}
+
+if [ "$COMMAND" = "help" ] || [ "$COMMAND" = "--help" ] || [ "$COMMAND" = "-h" ]; then
+    COMMAND="$2"
+    if [ "$COMMAND" = "" ]; then
+        echo "driver-util [OPTIONS] COMMAND [ARG...]"
+        echo "driver-util [ -h | --help | -v | --version ]"
+        echo ""
+        echo "A simple tool to make driver binding easy."
+        echo ""
+        echo "Options:"
+        echo "  -h, --help       Print usage"
+        echo "  -v, --version    Print version information"
+        echo ""
+        echo "Commands:"
+        echo "    get       Get driver currently used by the given PCI device"
+        echo "    bind      Bind the given driver to the given PCI device"
+        echo "    unbind    Unbind the driver of the given PCI device"
+        echo ""
+        echo "Examples:"
+        echo "    #Get the active driver of the device with address 02:00.0"
+        echo "    driver-util get 02:00.0"
+        echo ""
+        echo "    #Unbind the active driver of the device with address 01:00.0"
+        echo "    driver-util unbind 01:00.0"
+        echo ""
+        echo "    #Bind the vfio-pci driver to the device with address 01:00.0"
+        echo "    driver-util bind 01:00.0 vfio-pci"
+    else
+        if [ "$COMMAND" = "bind" ]; then
+            echo 'driver-util bind <PCI_ADDRESS> <DRIVER_NAME>'
+            echo ""
+            echo "Bind the given driver to the given PCI device"
+            echo ""
+            echo "Parameters:"
+            echo '    PCI_ADDRESS    PCI address of the device (format: XX:XX.X)'
+            echo '    DRIVER_NAME    Name of the driver (As shown in lspci -vvv)'
+            echo ""
+            echo "Examples:"
+            echo "    #Bind the vfio-pci driver to the device with address 01:00.0"
+            echo "    driver-util bind 01:00.0 vfio-pci"
+            echo ""
+            echo "    #Bind the nvidea driver to the device with address 05:00.0"
+            echo "    driver-util bind 05:00.0 nvidea"
+            echo ""
+            echo "    #Bind the amdgpu driver to the device with address 02:00.0"
+            echo "    driver-util bind 02:00.0 amdgpu"
+        elif [ "$COMMAND" = "unbind" ]; then
+            echo 'driver-util unbind <PCI_ADDRESS> [DRIVER_NAME]'
+            echo ""
+            echo "Unbind the driver of the given PCI device"
+            echo ""
+            echo "Parameters:"
+            echo '    PCI_ADDRESS    PCI address of the device (format: XX:XX.X)'
+            echo '    DRIVER_NAME    Name of the driver (As shown in lspci -vvv)'
+            echo ""
+            echo "Examples:"
+            echo "    #Unbind the vfio-pci driver from the device with address 01:00.0"
+            echo "    driver-util unbind 01:00.0 vfio-pci"
+            echo ""
+            echo "    #Unbind the active driver of the device with address 03:00.0"
+            echo "    driver-util unbind 03:00.0"
+            echo ""
+            echo "    #Unbind the amdgpu driver from the device with address 02:00.0"
+            echo "    driver-util unbind 02:00.0 amdgpu"
+        elif [ "$COMMAND" = "get" ]; then
+            echo 'driver-util get <PCI_ADDRESS>'
+            echo ""
+            echo "Get driver currently used by the given PCI device"
+            echo ""
+            echo "Parameters:"
+            echo '    PCI_ADDRESS    PCI address of the device (format: XX:XX.X)'
+            echo ""
+            echo "Examples:"
+            echo "    #Get the active driver of the device with address 02:00.0"
+            echo "    driver-util get 02:00.0"
+            echo ""
+            echo "    #Get the active driver of the device with address 01:00.0"
+            echo "    driver-util get 01:00.0"
+        fi
+    fi
+elif [ "$COMMAND" = "bind" ]; then
+    bind "${@:2}"
+elif [ "$COMMAND" = "unbind" ]; then
+    unbind "${@:2}"
+elif [ "$COMMAND" = "get" ]; then
+    get "${@:2}"
+fi

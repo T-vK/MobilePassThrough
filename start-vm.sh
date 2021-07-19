@@ -25,6 +25,12 @@ else
     exit
 fi
 
+#source "$UTILS_DIR/gpu-check"
+shopt -s expand_aliases
+alias driver="sudo $UTILS_DIR/driver-util"
+alias vgpu="sudo $UTILS_DIR/vgpu-util"
+
+
 if [[ ${DRIVE_IMG} == /dev/* ]] ; then
     echo "> Using a physical OS drive..."
     OS_DRIVE_PARAM="-drive file=${DRIVE_IMG},if=virtio  -snapshot"
@@ -38,30 +44,33 @@ elif [[ ${DRIVE_IMG} == *.img ]] ; then
     fi
     OS_DRIVE_PARAM="-drive id=disk0,if=virtio,cache.direct=on,if=virtio,aio=native,format=raw,file=${DRIVE_IMG}"
 else
-    echo "> Error: It appears that no proper OS drive (image) has been provided. Check your 'DRIVE_IMG' var."
+    echo "> Error: It appears that no proper OS drive (image) has been provided. Check your 'DRIVE_IMG' var: '${DRIVE_IMG}'"
     exit
 fi
 
-if [ ! -f "${WIN_VARS}" ]; then
+if [ ! -f "${OVMF_VARS_VM}" ]; then
     echo "> Creating OVMF_VARS copy for this VM..."
-    sudo cp "${OVMF_VARS}" "${WIN_VARS}"
+    sudo cp "${OVMF_VARS}" "${OVMF_VARS_VM}"
 fi
 
 if sudo which optirun &> /dev/null && sudo optirun echo > /dev/null ; then
-    USE_BUMBLEBEE=true
     OPTIRUN_PREFIX="optirun "
+    DRI_PRIME_PREFIX=""
     echo "> Bumblebee works fine on this system. Using optirun when necessary..."
 else
-    USE_BUMBLEBEE=false
     OPTIRUN_PREFIX=""
-    echo "> Warning: Bumblebee is not available or doesn't work properly. Continuing anyway..."
+    if [ "$SUPPORTS_DRI_PRIME" = true ]; then
+        DRI_PRIME_PREFIX="DRI_PRIME=1 "
+    else
+        echo "> Warning: Bumblebee is not available or doesn't work properly. Continuing anyway..."
+    fi
 fi
 
 echo "> Retrieving and parsing DGPU IDs..."
-DGPU_IDS=$(sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
+DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
 DGPU_VENDOR_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f1)
 DGPU_DEVICE_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f2)
-DGPU_SS_IDS=$(optirun lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
+DGPU_SS_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
 DGPU_SS_VENDOR_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f1)
 DGPU_SS_DEVICE_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f2)
 
@@ -83,17 +92,13 @@ sudo modprobe vfio-pci
 if [ "$USE_LOOKING_GLASS" = true ] ; then
     echo "> Using Looking Glass..."
     echo "> Calculating required buffer size for ${LOOKING_GLASS_MAX_SCREEN_WIDTH}x${LOOKING_GLASS_MAX_SCREEN_HEIGHT} for Looking Glass..."
-    UNROUNDED_BUFFER_SIZE=$((($LOOKING_GLASS_MAX_SCREEN_WIDTH * $LOOKING_GLASS_MAX_SCREEN_HEIGHT * 4 * 2)/1024/1024+2))
+    UNROUNDED_BUFFER_SIZE=$((($LOOKING_GLASS_MAX_SCREEN_WIDTH * $LOOKING_GLASS_MAX_SCREEN_HEIGHT * 4 * 2)/1024/1024+10))
     BUFFER_SIZE=1
     while [[ $BUFFER_SIZE -le $UNROUNDED_BUFFER_SIZE ]]; do
         BUFFER_SIZE=$(($BUFFER_SIZE*2))
-    done;
+    done
     LOOKING_GLASS_BUFFER_SIZE="${BUFFER_SIZE}M"
     echo "> Looking Glass buffer size set to: ${LOOKING_GLASS_BUFFER_SIZE}"
-    echo "> Starting IVSHMEM server..."
-    sudo -u qemu ivshmem-server -p /tmp/ivshmem.pid -S /tmp/ivshmem_socket -l "${LOOKING_GLASS_BUFFER_SIZE}" -n 8
-    echo "> Adjusting permissons for the IVSHMEM server socket..."
-    sudo chmod 600 /tmp/ivshmem_socket
     LOOKING_GLASS_DEVICE_PARAM="-device ivshmem-plain,memdev=ivshmem,bus=pcie.0"
     LOOKING_GLASS_OBJECT_PARAM="-object memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}"
 else
@@ -104,10 +109,18 @@ fi
 
 if [ -z "$DGPU_ROM" ]; then
     echo "> Not using DGPU vBIOS override..."
-    DGPU_ROM_PARAM=""
+    DGPU_ROM_PARAM=",rombar=0"
 else
     echo "> Using DGPU vBIOS override..."
     DGPU_ROM_PARAM=",romfile=${DGPU_ROM}"
+fi
+
+if [ -z "$IGPU_ROM" ]; then
+    echo "> Not using DGPU vBIOS override..."
+    IGPU_ROM_PARAM=",rombar=0"
+else
+    echo "> Using DGPU vBIOS override..."
+    IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
 fi
 
 if [ -z "$SMB_SHARE_FOLDER" ]; then
@@ -121,11 +134,10 @@ fi
 if [ "$DGPU_PASSTHROUGH" = true ] ; then
     echo "> Using dGPU passthrough..."
     echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
-    sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' '/sys/bus/pci/devices/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
+    driver unbind "${DGPU_PCI_ADDRESS}"
     echo "> Binding dGPU to VFIO driver..."
-    sudo bash -c "echo '${DGPU_VENDOR_ID} ${DGPU_DEVICE_ID}' > '/sys/bus/pci/drivers/vfio-pci/new_id'"
+    driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
     #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
-    #sudo bash -c "echo '8086:1901' > '/sys/bus/pci/drivers/vfio-pci/new_id'"
     # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
     DGPU_ROOT_PORT_PARAM="-device ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1"
     DGPU_PARAM="-device vfio-pci,host=${DGPU_PCI_ADDRESS},bus=root.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}"
@@ -137,30 +149,36 @@ fi
 
 if [ "$SHARE_IGPU" = true ] ; then
     echo "> Using mediated iGPU passthrough..."
-    sudo modprobe kvmgt #sudo modprobe xengt
-    sudo modprobe vfio-mdev
-    sudo modprobe vfio-iommu-type1
-    VGPU_UUID=$(uuid)
-    VGPU_TYPES_DIR="/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/*"
-    VGPU_TYPE_DIR=( $VGPU_TYPES_DIR )
-    VGPU_TYPE=$(basename -- "${VGPU_TYPE_DIR}")
-    # For further twaeking read: https://github.com/intel/gvt-linux/wiki/GVTg_Setup_Guide#53-create-vgpu-kvmgt-only
-    echo "> Create vGPU for mediated iGPU passthrough..."
-    sudo bash -c "echo '${VGPU_UUID}' > '/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/${VGPU_TYPE}/create'"
-     # display=on when using dmabuf
+    vgpu init # load required kernel modules
+
+    # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
+    #        So for now we can't create a new vGPU every time the VM starts.
+    #vgpu remove "${IGPU_PCI_ADDRESS}" &> /dev/null # Ensure there are no vGPUs before creating a new one
+    VGPU_UUID="$(vgpu get "${IGPU_PCI_ADDRESS}" | head -1)"
+    if [ "$VGPU_UUID" == "" ]; then
+        echo "> Creating a vGPU for mediated iGPU passthrough..."
+        VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
+        if [ "$?" = "1" ]; then
+            echo "> Failed creating a vGPU. Try again or reboot! Error: ${VGPU_UUID}"
+            exit 1
+        fi
+    fi
 
     if [ "$USE_DMA_BUF" = true ] ; then
         echo "> Using dma-buf..."
         DMA_BUF_DISPLAY_PARAM="-display egl-headless" #"-display gtk,gl=on"
-        GVTG_PARAM="-device vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on,display=on"
+        GVTG_DISPLAY_STATE="on"
     else
         echo "> Not using dma-buf..."
         DMA_BUF_DISPLAY_PARAM=""
-        GVTG_PARAM="-device vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on,display=off"
+        GVTG_DISPLAY_STATE="off"
     fi
+
+    GVTG_PARAM="-device vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on${IGPU_ROM_PARAM},display=${GVTG_DISPLAY_STATE}"
 else
     echo "> Not using mediated iGPU passthrough..."
     GVTG_PARAM=""
+    DMA_BUF_DISPLAY_PARAM=""
 fi
 
 if [ "$USE_SPICE" = true ] ; then
@@ -181,7 +199,43 @@ else
     QXL_VGA_PARAM=""
 fi
 
-if [ -z "$USB_DEVICES" ]; then
+if [ "$USE_FAKE_BATTERY" = true ] ; then
+    echo "> Using fake battery..."
+    if [ ! -f "${VM_FILES_DIR}/fake-battery.aml" ] ; then
+        mv "${PROJECT_DIR}/acpi-tables/fake-battery.aml" "${VM_FILES_DIR}/fake-battery.aml"
+    fi
+    FAKE_BATTERY_SSDT_TABLE="$(readlink -f "${VM_FILES_DIR}/fake-battery.aml")"
+    ACPI_TABLE_PARAM="-acpitable file=${FAKE_BATTERY_SSDT_TABLE}"
+else
+    echo "> Not using fake battery..."
+    ACPI_TABLE_PARAM=""
+fi
+
+if [ "$PATCH_OVMF_WITH_VROM" = true ] ; then
+    PATCHED_OVMF_FILES_DIR="${VM_FILES_DIR}/patched-ovmf-files"
+    if [ "$DGPU_ROM" != "" ] ; then
+        echo "> Using patched OVMF..."
+        DGPU_ROM_NAME="$(basename "${DGPU_ROM}")"
+        if [ ! -f "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd" ] || [ ! -f "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd" ] ; then
+            DGPU_ROM_DIR="$(dirname "${DGPU_ROM}")"
+            mkdir -p "${PATCHED_OVMF_FILES_DIR}/tmp-build"
+            echo "> Patching OVMF with your vBIOS ROM. This may take a few minutes!"
+            sleep 5 # Ensure the user can read this first
+            sudo docker run --rm -ti -v "${PATCHED_OVMF_FILES_DIR}/tmp-build:/build:z" -v "${DGPU_ROM_DIR}:/roms:z" -e "VROM=${DGPU_ROM_NAME}" ovmf-vbios-patch
+            sudo mv "${PATCHED_OVMF_FILES_DIR}/tmp-build/OVMF_CODE.fd" "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"
+            sudo mv "${PATCHED_OVMF_FILES_DIR}/tmp-build/OVMF_VARS.fd" "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd"
+            sudo rm -rf "${PATCHED_OVMF_FILES_DIR}/tmp-build"
+        fi
+        OVMF_CODE="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"
+        OVMF_VARS_VM="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd"
+    else
+        echo "> Not using patched OVMF..."
+    fi
+else
+    echo "> Not using patched OVMF..."
+fi
+
+if [ -z "$USB_DEVICES" ] ; then
     echo "> Not using USB passthrough..."
     USB_DEVICE_PARAMS=""
 else
@@ -206,7 +260,7 @@ else
 fi
 
 echo "> Starting the Virtual Machine..."
-# Refer https://github.com/saveriomiroddi/qemu-pinning for how to set your cpu affinity properly
+# Refer to https://github.com/saveriomiroddi/qemu-pinning for information on how to set your cpu affinity properly
 sudo qemu-system-x86_64 \
   -name "${VM_NAME}" \
   -machine type=q35,accel=kvm \
@@ -227,12 +281,12 @@ sudo qemu-system-x86_64 \
   ${SMB_SHARE_PARAM} \
   ${SPICE_PARAM} \
   -drive "if=pflash,format=raw,readonly=on,file=${OVMF_CODE}" \
-  -drive "if=pflash,format=raw,file=${WIN_VARS}" \
+  -drive "if=pflash,format=raw,file=${OVMF_VARS_VM}" \
   -drive "file=${INSTALL_IMG},index=1,media=cdrom" \
   -drive "file=${VIRTIO_WIN_IMG},index=2,media=cdrom" \
   -drive "file=${HELPER_ISO},index=3,media=cdrom" \
   ${OS_DRIVE_PARAM} \
-  -netdev "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/tap_ifup,downscript=${VM_FILES_DIR}/tap_ifdown,vhost=on" \
+  -netdev "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on" \
   ${GVTG_PARAM} \
   -device ich9-intel-hda \
   -device hda-output \
@@ -240,6 +294,7 @@ sudo qemu-system-x86_64 \
   ${DGPU_PARAM} \
   -device virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS} \
   -device pci-bridge,addr=12.0,chassis_nr=2,id=head.2 \
+  ${ACPI_TABLE_PARAM} \
   -usb \
   ${VIRTUAL_KEYBOARD_PARAM} \
   ${USB_DEVICE_PARAMS} \
@@ -250,12 +305,20 @@ sudo qemu-system-x86_64 \
   ${DMA_BUF_DISPLAY_PARAM}
 
 # This gets executed when the vm exits
-echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
 if [ "$DGPU_PASSTHROUGH" = true ] ; then
-    sudo bash -c "echo '0000:${DGPU_PCI_ADDRESS}' > '/sys/bus/pci/drivers/vfio-pci/0000:${DGPU_PCI_ADDRESS}/driver/unbind'"
-    sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
+    echo "> Unbinding dGPU from vfio driver..."
+    driver unbind "${DGPU_PCI_ADDRESS}"
+    if [ "$HOST_DGPU_DRIVER" = "nvidea" ] || [ "$HOST_DGPU_DRIVER" = "nuveau" ]; then
+        echo "> Turn the dGPU off using bumblebee..."
+        sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
+    fi
+    echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
+    driver bind "${DGPU_PCI_ADDRESS}" "${HOST_DGPU_DRIVER}"
 fi
 if [ "$SHARE_IGPU" = true ] ; then
-    echo "> Remove Intel vGPU..."
-    sudo bash -c "echo 1 > '/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID}/remove'"
+    # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
+    #        So for now we can't create a new vGPU every time the VM starts.
+    echo "> Keeping Intel vGPU for next VM start..."
+    #echo "> Remove Intel vGPU..."
+    #vgpu remove "${IGPU_PCI_ADDRESS}" "${VGPU_UUID}"
 fi

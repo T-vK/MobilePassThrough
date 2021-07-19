@@ -30,12 +30,14 @@ addKernelParam "rd.driver.pre=vfio-pci" # tell dracut to load vfio-pci first
 #addKernelParam "acpi_osi=!" # may fix problems with AMI style UEFIs
 #addKernelParam "acpi_osi='Windows 2009'" # may fix problems with AMI style UEFIs
 
-# TODO: check if /etc/dracut.conf.d/vfio.conf is necessary / make sure it onyl happens once
-#echo "additional vfio stub driver stuff"
-#echo 'add_drivers+="vfio vfio_iommu_type1 vfio_pci' >> /etc/dracut.conf.d/vfio.conf
-
-echo "(Re)building initramfs for the current kernel..."
-sudo dracut -f --kver `uname -r`
-
+#echo "Adding vfio stub drivers to initramfs..."
+#addInitramfsDriver vfio_virqfd
+#addInitramfsDriver vfio_pci
+#addInitramfsDriver vfio_iommu_type1
+#addInitramfsDriver vfio
+#
+#
+#echo "(Re)building initramfs for the current kernel to apply driver changes..."
+#applyInitramfsChanges
 echo "Applying the kernel parameter changes..."
 applyKernelParamChanges

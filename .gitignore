@@ -4,7 +4,10 @@
 /vm-files/*.fd
 /vm-files/*.iso
 /vm-files/*.img
+/vm-files/*.aml
+/vm-files/patched-ovmf-files
 /vm-files/MAC_ADDRESS.txt
+/acpi-tables/*.aml
 .*.swp
 .*.swo
 thirdparty
@@ -12,3 +15,6 @@ thirdparty
 /helper-iso-files/bin
 /LookingGlass
 /utils/nvflash_linux
+/VBiosFinder
+/helper-iso-files/drivers
+*.asc

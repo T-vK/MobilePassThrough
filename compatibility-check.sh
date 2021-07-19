@@ -111,10 +111,10 @@ for GPU_ID in "${GPU_IDS[@]}"; do
             log_orange "${OTHER_DEVICES_IN_GPU_GROUP}"
             GOOD_GPUS+=("${GPU_ID}")
         else
-            log_orange "[Problem] Other devices have been found in the IOMMU group of the GPU with the ID '${GPU_ID}'. Depending on the devices, this could make GPU passthrough impossible to pass this GPU through to a virtual machine!"
+            log_orange "[Problem] Other devices have been found in the IOMMU group of the GPU with the ID '${GPU_ID}'. Depending on the devices, this could make it impossible to pass this GPU through to a virtual machine!"
             log_orange "The devices found in this GPU's IOMMU Group are:"
             log_red "${OTHER_DEVICES_IN_GPU_GROUP}"
-            log_white "[Info] It might be possible to get it to work by putting the devices in different slots on the motherboard and or by using the ACS override patch. Otherwise you'll probably have to get a different motherboard. If you're on a laptop, there is nothing you can do as far as I'm aware. Although it would theoretically be possible for ACS support for laptops to exist. TODO: Find a way to check if the current machine has support for that."
+            log_white "[Info] It might be possible to get it to work by putting the devices in different slots on the motherboard and/or by using the ACS override patch. Otherwise you'll probably have to get a different motherboard. If you're on a laptop, there is nothing you can do as far as I'm aware. Although it would theoretically be possible for ACS support for laptops to exist. TODO: Find a way to check if the current machine has support for that."
             BAD_GPUS+=("${GPU_ID}")
         fi
     fi
@@ -191,10 +191,10 @@ fi
     log_white "[Info] Device name: $DEVICE_NAME"
     log_white "[Info] BIOS version: $BIOS_VERSION"
 
-    if echo $IOMMU_GROUPS | grep --quiet " VGA compatible controller " ; then
-        log_green "[OK] This system is probably MUXed. (The connection between the GPU(s) and the [internal display]/[display outputs] is multiplexed.)"
+    if [ $(echo $IOMMU_GROUPS | grep " VGA compatible controller " | wc -l) = "2" ]  && ! echo $IOMMU_GROUPS | grep --quiet " Display controller " ; then
+        log_white "[Info] This system is probably MUXed. (The connection between the GPU(s) and the [internal display]/[display outputs] is multiplexed.)"
     else
-        log_orange "[Warning] This system is probably MUX-less. (The connection between the GPU(s) and the [internal display]/[display outputs] is not multiplexed.)"
+        log_white "[Info] This system is probably MUX-less. (The connection between the GPU(s) and the [internal display]/[display outputs] is not multiplexed.)"
     fi
 
 

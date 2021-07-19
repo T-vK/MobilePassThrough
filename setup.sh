@@ -10,7 +10,26 @@ source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
 sudo $DISTRO_UTILS_DIR/install-dependencies
 sudo $UTILS_DIR/set-kernel-params
-sudo $DISTRO_UTILS_DIR/nvidia-setup
+
+source "$UTILS_DIR/gpu-check"
+
+sudo $UTILS_DIR/ovmf-vbios-patch-setup
+
+if [ $HAS_INTEL_GPU = true ]; then
+    sudo $DISTRO_UTILS_DIR/intel-setup
+fi
+if [ $HAS_AMD_GPU = true ]; then
+    sudo $DISTRO_UTILS_DIR/amd-setup
+fi
+if [ $HAS_NVIDIA_GPU = true ]; then
+    sudo $DISTRO_UTILS_DIR/nvidia-setup
+fi
+if [ $SUPPORTS_OPTIMUS = true ]; then
+    sudo $DISTRO_UTILS_DIR/bumblebee-setup
+fi
+
+sudo $UTILS_DIR/build-fake-battery-ssdt
+
 sudo $DISTRO_UTILS_DIR/looking-glass-setup
 
 echo "Make sure you didn't get any critical errors above."
