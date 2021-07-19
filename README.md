@@ -2,7 +2,7 @@
 
 ## Introduction
 The goal of this project is to make GPU passthrough on notebooks as easy and accessible as possible.  
-To achieve that goal I have written a collection of scripts that:
+To achieve that goal I have written a collection of scripts [accessible via mbpt.sh](https://github.com/T-vK/MobilePassThrough#how-to-use-mbptsh) that:
 
 ### On the host system (Linux):
 
@@ -252,7 +252,7 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 ## TODO
 
 - Add nuveau driver compatibility
-- Allow the user to decide if he wants bumblebee or not
+- Allow the user to decide if he wants bumblebee or not (for Nvidia GPUs)
 - More detailed output about how the device is muxed
 - Fix unattended Windows installation
 - Create a bootable live version of this project
