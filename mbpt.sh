@@ -17,7 +17,6 @@ function printHelp() {
     echo ''
     echo 'Options:'
     echo '  -h, --help       Print usage'
-    echo '  -v, --version    Print version information'
     echo ''
     echo 'Commands:'
     echo '    setup        Install required dependencies and set required kernel parameters'

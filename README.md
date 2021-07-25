@@ -264,3 +264,12 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 - Reduce the size of the ovmf-vbios-patch Docker image
 - Make the USB passthrough device selection easier (i.e. display a list of devices that can be selected)
 - Look into hotplugging and check if the GPU can be hotplugged during VM runtime
+- Generate libvirt XML
+- Check which kernel parameters are currently used to determine if a reboot is necessary
+- Check if required dependencies are installed for each script
+- Check if fake-battery has been built
+- Check if patched ovmf exists
+- Add a fully unattended mode that runs the setup, then reboots and continues running the compatibility check and creating/installing the VM and starting it.
+- Use virt-install to fully automate the windows installation
+- Add support for multiple VMs
+- Add support for Linux guests

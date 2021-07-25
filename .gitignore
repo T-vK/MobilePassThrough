@@ -4,6 +4,7 @@
 /vm-files/*.fd
 /vm-files/*.iso
 /vm-files/*.img
+/vm-files/*.vfd
 /vm-files/*.aml
 /vm-files/patched-ovmf-files
 /vm-files/MAC_ADDRESS.txt

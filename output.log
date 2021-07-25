@@ -1,0 +1,357 @@
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (cli:204) Launched with command line: /usr/bin/virt-install --virt-type kvm --os-variant win10 --arch=x86_64 --cdrom /usr/share/virtio-win/virtio-win.iso --cdrom /home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso --disk /home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img --debug --qemu-commandline=   -name 'WindowsVM'   -machine type=q35,accel=kvm   -global ICH9-LPC.disable_s3=1   -global ICH9-LPC.disable_s4=1   -enable-kvm   -cpu host,kvm=off,hv_vapic,hv_relaxed,hv_spinlocks=0x1fff,hv_time,hv_vendor_id=12alphanum   -smp '2'   -m '8G'   -mem-prealloc   -rtc clock=host,base=localtime   -nographic   -serial none   -parallel none   -boot menu=on   -boot order=d   -k en-us      -spice port=5900,addr=127.0.0.1,disable-ticketing   -drive 'if=pflash,format=raw,readonly=on,file=/home/fedora/Projects/MobilePassThrough/vm-files/patched-ovmf-files/vbios_1002_694e_1.rom_OVMF_CODE.fd'   -drive 'if=pflash,format=raw,file=/home/fedora/Projects/MobilePassThrough/vm-files/patched-ovmf-files/vbios_1002_694e_1.rom_OVMF_VARS.fd'   -drive 'file=/home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso,index=1,media=cdrom'   -drive 'file=/usr/share/virtio-win/virtio-win.iso,index=2,media=cdrom'   -drive 'file=/home/fedora/Projects/MobilePassThrough/vm-files/mobile-passthrough-helper.iso,index=3,media=cdrom'   -fda '/usr/share/virtio-win/virtio-win_amd64.vfd'   -fdb '/home/fedora/Projects/MobilePassThrough/vm-files/autounattend.vfd'   -drive 'id=disk0,if=virtio,cache.direct=on,if=virtio,aio=native,format=raw,file=/home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img'   -netdev 'type=tap,id=net0,ifname=tap0,script=/home/fedora/Projects/MobilePassThrough/vm-files/network-scripts/tap_ifup,downscript=/home/fedora/Projects/MobilePassThrough/vm-files/network-scripts/tap_ifdown,vhost=on'      -device ich9-intel-hda   -device hda-output   -device ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1   -device vfio-pci,host=01:00.0,bus=root.1,addr=00.0,x-pci-sub-device-id=0x080d,x-pci-sub-vendor-id=0x1028,multifunction=on,romfile=/home/fedora/Projects/MobilePassThrough/vm-files/vbios-roms/vbios_1002_694e_1.rom   -device 'virtio-net-pci,netdev=net0,addr=19.0,mac=52:54:BE:EF:D3:5C'   -device pci-bridge,addr=12.0,chassis_nr=2,id=head.2   -acpitable 'file=/home/fedora/Projects/MobilePassThrough/vm-files/fake-battery.aml'   -usb   -device usb-tablet    -device usb-host,vendorid=0x0b95,productid=0x1790   -device ivshmem-plain,memdev=ivshmem,bus=pcie.0   -object memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=32M   -device qxl,bus=pcie.0,addr=1c.4,id=video.2   -vga qxl   
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (virtinstall:212) Distilled --network options: ['default']
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (virtinstall:144) Distilled --disk options: ['/home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img']
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (cli:216) Requesting libvirt URI default
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (cli:219) Received libvirt URI qemu:///system
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (guest:320) Setting Guest osinfo name <_OsVariant name=generic>
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (guest:320) Setting Guest osinfo name <_OsVariant name=win10>
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (installer:544) installer.detect_distro returned=win10
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (cli:265) Using default --name win10
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (osdict:344) No recommended value found for key='storage', using minimum=21474836480 * 2
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (osdict:344) No recommended value found for key='ram', using minimum=2147483648 * 2
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (osdict:344) No recommended value found for key='n-cpus', using minimum=1 * 2
+[Sun, 25 Jul 2021 16:19:34 virt-install 10897] DEBUG (cli:265) Using win10 default --memory 4096
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (graphics:165) Using default_graphics=spice
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (graphics:176) Local connection, disabling spice image compression.
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (disk:242) DeviceDisk.check_path_search path=/home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (disk:242) DeviceDisk.check_path_search path=/home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (disk:242) DeviceDisk.check_path_search path=/home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (cli:265) 
+Starting install...
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (installer:599) Generated install XML: 
+<domain type="kvm">
+  <name>win10</name>
+  <uuid>2c4503a5-11ba-4a5d-b850-8e65a31c187a</uuid>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://microsoft.com/win/10"/>
+    </libosinfo:libosinfo>
+  </metadata>
+  <memory>4194304</memory>
+  <currentMemory>4194304</currentMemory>
+  <vcpu>2</vcpu>
+  <os>
+    <type arch="x86_64" machine="q35">hvm</type>
+    <boot dev="cdrom"/>
+    <boot dev="hd"/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <hyperv>
+      <relaxed state="on"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="8191"/>
+    </hyperv>
+    <vmport state="off"/>
+  </features>
+  <cpu mode="host-model"/>
+  <clock offset="localtime">
+    <timer name="rtc" tickpolicy="catchup"/>
+    <timer name="pit" tickpolicy="delay"/>
+    <timer name="hpet" present="no"/>
+    <timer name="hypervclock" present="yes"/>
+  </clock>
+  <on_reboot>destroy</on_reboot>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="raw"/>
+      <source file="/home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img"/>
+      <target dev="sda" bus="sata"/>
+    </disk>
+    <disk type="file" device="cdrom">
+      <driver name="qemu" type="raw"/>
+      <source file="/home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso"/>
+      <target dev="sdb" bus="sata"/>
+      <readonly/>
+    </disk>
+    <controller type="usb" model="qemu-xhci" ports="15"/>
+    <interface type="network">
+      <source network="default"/>
+      <mac address="52:54:00:b1:94:e6"/>
+      <model type="e1000e"/>
+    </interface>
+    <console type="pty"/>
+    <channel type="spicevmc">
+      <target type="virtio" name="com.redhat.spice.0"/>
+    </channel>
+    <input type="tablet" bus="usb"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
+    <sound model="ich9"/>
+    <video>
+      <model type="qxl"/>
+    </video>
+    <redirdev bus="usb" type="spicevmc"/>
+    <redirdev bus="usb" type="spicevmc"/>
+  </devices>
+  <qemu:commandline xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0">
+    <qemu:arg value="-name"/>
+    <qemu:arg value="WindowsVM"/>
+    <qemu:arg value="-machine"/>
+    <qemu:arg value="type=q35,accel=kvm"/>
+    <qemu:arg value="-global"/>
+    <qemu:arg value="ICH9-LPC.disable_s3=1"/>
+    <qemu:arg value="-global"/>
+    <qemu:arg value="ICH9-LPC.disable_s4=1"/>
+    <qemu:arg value="-enable-kvm"/>
+    <qemu:arg value="-cpu"/>
+    <qemu:arg value="host,kvm=off,hv_vapic,hv_relaxed,hv_spinlocks=0x1fff,hv_time,hv_vendor_id=12alphanum"/>
+    <qemu:arg value="-smp"/>
+    <qemu:arg value="2"/>
+    <qemu:arg value="-m"/>
+    <qemu:arg value="8G"/>
+    <qemu:arg value="-mem-prealloc"/>
+    <qemu:arg value="-rtc"/>
+    <qemu:arg value="clock=host,base=localtime"/>
+    <qemu:arg value="-nographic"/>
+    <qemu:arg value="-serial"/>
+    <qemu:arg value="none"/>
+    <qemu:arg value="-parallel"/>
+    <qemu:arg value="none"/>
+    <qemu:arg value="-boot"/>
+    <qemu:arg value="menu=on"/>
+    <qemu:arg value="-boot"/>
+    <qemu:arg value="order=d"/>
+    <qemu:arg value="-k"/>
+    <qemu:arg value="en-us"/>
+    <qemu:arg value="-spice"/>
+    <qemu:arg value="port=5900,addr=127.0.0.1,disable-ticketing"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="if=pflash,format=raw,readonly=on,file=/home/fedora/Projects/MobilePassThrough/vm-files/patched-ovmf-files/vbios_1002_694e_1.rom_OVMF_CODE.fd"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="if=pflash,format=raw,file=/home/fedora/Projects/MobilePassThrough/vm-files/patched-ovmf-files/vbios_1002_694e_1.rom_OVMF_VARS.fd"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="file=/home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso,index=1,media=cdrom"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="file=/usr/share/virtio-win/virtio-win.iso,index=2,media=cdrom"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="file=/home/fedora/Projects/MobilePassThrough/vm-files/mobile-passthrough-helper.iso,index=3,media=cdrom"/>
+    <qemu:arg value="-fda"/>
+    <qemu:arg value="/usr/share/virtio-win/virtio-win_amd64.vfd"/>
+    <qemu:arg value="-fdb"/>
+    <qemu:arg value="/home/fedora/Projects/MobilePassThrough/vm-files/autounattend.vfd"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="id=disk0,if=virtio,cache.direct=on,if=virtio,aio=native,format=raw,file=/home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img"/>
+    <qemu:arg value="-netdev"/>
+    <qemu:arg value="type=tap,id=net0,ifname=tap0,script=/home/fedora/Projects/MobilePassThrough/vm-files/network-scripts/tap_ifup,downscript=/home/fedora/Projects/MobilePassThrough/vm-files/network-scripts/tap_ifdown,vhost=on"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="ich9-intel-hda"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="hda-output"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="vfio-pci,host=01:00.0,bus=root.1,addr=00.0,x-pci-sub-device-id=0x080d,x-pci-sub-vendor-id=0x1028,multifunction=on,romfile=/home/fedora/Projects/MobilePassThrough/vm-files/vbios-roms/vbios_1002_694e_1.rom"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="virtio-net-pci,netdev=net0,addr=19.0,mac=52:54:BE:EF:D3:5C"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="pci-bridge,addr=12.0,chassis_nr=2,id=head.2"/>
+    <qemu:arg value="-acpitable"/>
+    <qemu:arg value="file=/home/fedora/Projects/MobilePassThrough/vm-files/fake-battery.aml"/>
+    <qemu:arg value="-usb"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="usb-tablet"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="usb-host,vendorid=0x0b95,productid=0x1790"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="ivshmem-plain,memdev=ivshmem,bus=pcie.0"/>
+    <qemu:arg value="-object"/>
+    <qemu:arg value="memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=32M"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="qxl,bus=pcie.0,addr=1c.4,id=video.2"/>
+    <qemu:arg value="-vga"/>
+    <qemu:arg value="qxl"/>
+  </qemu:commandline>
+</domain>
+
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (installer:601) Generated boot XML: 
+<domain type="kvm">
+  <name>win10</name>
+  <uuid>2c4503a5-11ba-4a5d-b850-8e65a31c187a</uuid>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://microsoft.com/win/10"/>
+    </libosinfo:libosinfo>
+  </metadata>
+  <memory>4194304</memory>
+  <currentMemory>4194304</currentMemory>
+  <vcpu>2</vcpu>
+  <os>
+    <type arch="x86_64" machine="q35">hvm</type>
+    <boot dev="hd"/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <hyperv>
+      <relaxed state="on"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="8191"/>
+    </hyperv>
+    <vmport state="off"/>
+  </features>
+  <cpu mode="host-model"/>
+  <clock offset="localtime">
+    <timer name="rtc" tickpolicy="catchup"/>
+    <timer name="pit" tickpolicy="delay"/>
+    <timer name="hpet" present="no"/>
+    <timer name="hypervclock" present="yes"/>
+  </clock>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="raw"/>
+      <source file="/home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img"/>
+      <target dev="sda" bus="sata"/>
+    </disk>
+    <disk type="file" device="cdrom">
+      <driver name="qemu" type="raw"/>
+      <source file="/home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso"/>
+      <target dev="sdb" bus="sata"/>
+      <readonly/>
+    </disk>
+    <controller type="usb" model="qemu-xhci" ports="15"/>
+    <interface type="network">
+      <source network="default"/>
+      <mac address="52:54:00:b1:94:e6"/>
+      <model type="e1000e"/>
+    </interface>
+    <console type="pty"/>
+    <channel type="spicevmc">
+      <target type="virtio" name="com.redhat.spice.0"/>
+    </channel>
+    <input type="tablet" bus="usb"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
+    <sound model="ich9"/>
+    <video>
+      <model type="qxl"/>
+    </video>
+    <redirdev bus="usb" type="spicevmc"/>
+    <redirdev bus="usb" type="spicevmc"/>
+  </devices>
+  <qemu:commandline xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0">
+    <qemu:arg value="-name"/>
+    <qemu:arg value="WindowsVM"/>
+    <qemu:arg value="-machine"/>
+    <qemu:arg value="type=q35,accel=kvm"/>
+    <qemu:arg value="-global"/>
+    <qemu:arg value="ICH9-LPC.disable_s3=1"/>
+    <qemu:arg value="-global"/>
+    <qemu:arg value="ICH9-LPC.disable_s4=1"/>
+    <qemu:arg value="-enable-kvm"/>
+    <qemu:arg value="-cpu"/>
+    <qemu:arg value="host,kvm=off,hv_vapic,hv_relaxed,hv_spinlocks=0x1fff,hv_time,hv_vendor_id=12alphanum"/>
+    <qemu:arg value="-smp"/>
+    <qemu:arg value="2"/>
+    <qemu:arg value="-m"/>
+    <qemu:arg value="8G"/>
+    <qemu:arg value="-mem-prealloc"/>
+    <qemu:arg value="-rtc"/>
+    <qemu:arg value="clock=host,base=localtime"/>
+    <qemu:arg value="-nographic"/>
+    <qemu:arg value="-serial"/>
+    <qemu:arg value="none"/>
+    <qemu:arg value="-parallel"/>
+    <qemu:arg value="none"/>
+    <qemu:arg value="-boot"/>
+    <qemu:arg value="menu=on"/>
+    <qemu:arg value="-boot"/>
+    <qemu:arg value="order=d"/>
+    <qemu:arg value="-k"/>
+    <qemu:arg value="en-us"/>
+    <qemu:arg value="-spice"/>
+    <qemu:arg value="port=5900,addr=127.0.0.1,disable-ticketing"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="if=pflash,format=raw,readonly=on,file=/home/fedora/Projects/MobilePassThrough/vm-files/patched-ovmf-files/vbios_1002_694e_1.rom_OVMF_CODE.fd"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="if=pflash,format=raw,file=/home/fedora/Projects/MobilePassThrough/vm-files/patched-ovmf-files/vbios_1002_694e_1.rom_OVMF_VARS.fd"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="file=/home/fedora/Projects/MobilePassThrough/vm-files/windows10.iso,index=1,media=cdrom"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="file=/usr/share/virtio-win/virtio-win.iso,index=2,media=cdrom"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="file=/home/fedora/Projects/MobilePassThrough/vm-files/mobile-passthrough-helper.iso,index=3,media=cdrom"/>
+    <qemu:arg value="-fda"/>
+    <qemu:arg value="/usr/share/virtio-win/virtio-win_amd64.vfd"/>
+    <qemu:arg value="-fdb"/>
+    <qemu:arg value="/home/fedora/Projects/MobilePassThrough/vm-files/autounattend.vfd"/>
+    <qemu:arg value="-drive"/>
+    <qemu:arg value="id=disk0,if=virtio,cache.direct=on,if=virtio,aio=native,format=raw,file=/home/fedora/Projects/MobilePassThrough/vm-files/WindowsVM.img"/>
+    <qemu:arg value="-netdev"/>
+    <qemu:arg value="type=tap,id=net0,ifname=tap0,script=/home/fedora/Projects/MobilePassThrough/vm-files/network-scripts/tap_ifup,downscript=/home/fedora/Projects/MobilePassThrough/vm-files/network-scripts/tap_ifdown,vhost=on"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="ich9-intel-hda"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="hda-output"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="vfio-pci,host=01:00.0,bus=root.1,addr=00.0,x-pci-sub-device-id=0x080d,x-pci-sub-vendor-id=0x1028,multifunction=on,romfile=/home/fedora/Projects/MobilePassThrough/vm-files/vbios-roms/vbios_1002_694e_1.rom"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="virtio-net-pci,netdev=net0,addr=19.0,mac=52:54:BE:EF:D3:5C"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="pci-bridge,addr=12.0,chassis_nr=2,id=head.2"/>
+    <qemu:arg value="-acpitable"/>
+    <qemu:arg value="file=/home/fedora/Projects/MobilePassThrough/vm-files/fake-battery.aml"/>
+    <qemu:arg value="-usb"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="usb-tablet"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="usb-host,vendorid=0x0b95,productid=0x1790"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="ivshmem-plain,memdev=ivshmem,bus=pcie.0"/>
+    <qemu:arg value="-object"/>
+    <qemu:arg value="memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=32M"/>
+    <qemu:arg value="-device"/>
+    <qemu:arg value="qxl,bus=pcie.0,addr=1c.4,id=video.2"/>
+    <qemu:arg value="-vga"/>
+    <qemu:arg value="qxl"/>
+  </qemu:commandline>
+</domain>
+
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (cli:255)   File "/usr/bin/virt-install", line 8, in <module>
+    virtinstall.runcli()
+  File "/usr/share/virt-manager/virtinst/virtinstall.py", line 1158, in runcli
+    sys.exit(main())
+  File "/usr/share/virt-manager/virtinst/virtinstall.py", line 1151, in main
+    start_install(guest, installer, options)
+  File "/usr/share/virt-manager/virtinst/virtinstall.py", line 901, in start_install
+    fail(e, do_exit=False)
+  File "/usr/share/virt-manager/virtinst/cli.py", line 255, in fail
+    log.debug("".join(traceback.format_stack()))
+
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] ERROR (cli:256) internal error: process exited while connecting to monitor: qemu-system-x86_64: -acpitable file=/home/fedora/Projects/MobilePassThrough/vm-files/fake-battery.aml: can't open file /home/fedora/Projects/MobilePassThrough/vm-files/fake-battery.aml: Permission denied
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (cli:258) 
+Traceback (most recent call last):
+  File "/usr/share/virt-manager/virtinst/virtinstall.py", line 881, in start_install
+    domain = installer.start_install(
+  File "/usr/share/virt-manager/virtinst/install/installer.py", line 701, in start_install
+    domain = self._create_guest(
+  File "/usr/share/virt-manager/virtinst/install/installer.py", line 649, in _create_guest
+    domain = self.conn.createXML(install_xml or final_xml, 0)
+  File "/usr/lib64/python3.9/site-packages/libvirt.py", line 4366, in createXML
+    raise libvirtError('virDomainCreateXML() failed')
+libvirt.libvirtError: internal error: process exited while connecting to monitor: qemu-system-x86_64: -acpitable file=/home/fedora/Projects/MobilePassThrough/vm-files/fake-battery.aml: can't open file /home/fedora/Projects/MobilePassThrough/vm-files/fake-battery.aml: Permission denied
+[Sun, 25 Jul 2021 16:19:35 virt-install 10897] DEBUG (cli:271) Domain installation does not appear to have been successful.
+If it was, you can restart your domain by running:
+  virsh --connect qemu:///system start win10
+otherwise, please restart your installation.
+Domain installation does not appear to have been successful.
+If it was, you can restart your domain by running:
+  virsh --connect qemu:///system start win10
+otherwise, please restart your installation.
+Using default --name win10
+Using win10 default --memory 4096
