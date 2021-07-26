@@ -117,7 +117,6 @@ if [ "$VM_START_MODE" = "qemu" ]; then
 elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--disk" "device=floppy,path=${AUTOUNATTEND_WIN_VFD}")
 fi
-
 #TODO: Uncomment!
 #QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")
 #QEMU_PARAMS+=("-device" "virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS}")
@@ -245,8 +244,20 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
     driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
     #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
     # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
-    QEMU_PARAMS+=("-device" "ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1") # DGPU root port
+    if [ "$VM_START_MODE" = "qemu" ]; then
+        QEMU_PARAMS+=("-device" "ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1") # DGPU root port
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        VIRT_INSTALL_PARAMS+=("--controller" "type=pci,model=pcie-root-port" "--xml xpath.set=./devices/controller/model/@name=ioh3420") # <controller type='pci' model='pcie-root-port'><model name='ioh3420'/></controller>
+    fi
+
+    # TODO: when the VM boots, check what chassis and slot libvirt allocates. Then plug that into the vfio-pci line.
     QEMU_PARAMS+=("-device" "vfio-pci,host=${DGPU_PCI_ADDRESS},bus=root.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}")
+
+    #if [ "$VM_START_MODE" = "qemu" ]; then
+    #    QEMU_PARAMS+=("-device" "vfio-pci,host=${DGPU_PCI_ADDRESS},bus=root.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}")
+    #elif [ "$VM_START_MODE" = "virt-install" ]; then
+    #    VIRT_INSTALL_PARAMS+=("--hostdev" "${DGPU_PCI_ADDRESS},address.type=pci,address.multifunction=on,address") # TODO: not complete; i.e. rom file param missing
+    #fi
 else
     echo "> Not using dGPU passthrough..."
 fi
@@ -278,6 +289,13 @@ if [ "$SHARE_IGPU" = true ]; then
     fi
     
     QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on${IGPU_ROM_PARAM},display=${GVTG_DISPLAY_STATE}") # GVT-G
+    
+    # TODO: same as for iGPU
+    #if [ "$VM_START_MODE" = "qemu" ]; then
+    #    QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on${IGPU_ROM_PARAM},display=${GVTG_DISPLAY_STATE}") # GVT-G
+    #elif [ "$VM_START_MODE" = "virt-install" ]; then
+    #    VIRT_INSTALL_PARAMS+=("--hostdev" "")
+    #fi
 else
     echo "> Not using mediated iGPU passthrough..."
 fi
@@ -304,7 +322,7 @@ if [ "$USE_QXL" = true ]; then
 else
     echo "> Not using QXL..."
 fi
--video qxl --channel spicevmc
+#-video qxl --channel spicevmc
 if [ "$USE_FAKE_BATTERY" = true ]; then
     echo "> Using fake battery..."
     if [ ! -f "${VM_FILES_DIR}/fake-battery.aml" ]; then
