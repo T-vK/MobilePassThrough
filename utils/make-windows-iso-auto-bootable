@@ -11,12 +11,12 @@ TMP="./tmp"
 ISO_FILES="${TMP}/iso-files"
 ISO_MP="${TMP}/iso-mountpoint"
 
-#rm -rf "${TMP}"
-#mkdir -p "${ISO_FILES}"
-#mkdir -p "${ISO_MP}"
-#sudo mount -t udf "${WIN10_IMG}" "${ISO_MP}"
-#sudo cp -Rva ${ISO_MP}/* "${ISO_FILES}"
-#sudo umount "${ISO_MP}"
+rm -rf "${TMP}"
+mkdir -p "${ISO_FILES}"
+mkdir -p "${ISO_MP}"
+sudo mount -t udf "${WIN10_IMG}" "${ISO_MP}"
+sudo cp -Rva ${ISO_MP}/* "${ISO_FILES}"
+sudo umount "${ISO_MP}"
 
 # Make modifications to the Windows ISO
 #BOOT_DIR="${ISO_FILES}/efi/microsoft/boot"
@@ -63,34 +63,38 @@ COPYRIGHT_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Copyright file id: " |
 ABSTRACT_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Abstract file id: " | cut -d ' ' -f4-)"
 BIBLIOGRAPHIC_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Bibliographic file id: " | cut -d ' ' -f4-)"
 
-rm ".mkisofsrc"
-echo "APPI=${APPLICATION_ID}" >> ".mkisofsrc"
-echo "COPY=${COPYRIGHT_FILE_ID}" >> ".mkisofsrc"
-echo "ABST=${ABSTRACT_FILE_ID}" >> ".mkisofsrc"
-echo "BIBL=${BIBLIOGRAPHIC_FILE_ID}" >> ".mkisofsrc"
-echo "PREP=${DATA_PREPARER_ID}" >> ".mkisofsrc"
-echo "PUBL=${PUBLISHER_ID}" >> ".mkisofsrc"
-echo "SYSI=${SYSTEM_ID}" >> ".mkisofsrc"
-echo "VOLI=${VOLUME_ID}" >> ".mkisofsrc"
-echo "VOLS=${VOLUME_SET_ID}" >> ".mkisofsrc"
 sudo rm "${WIN10_IMG}.tmp.iso"
 sudo mkisofs \
+  -appid "${APPLICATION_ID}" \
+  -copyright "${COPYRIGHT_FILE_ID}" \
+  -abstract "${ABSTRACT_FILE_ID}" \
+  -biblio "${BIBLIOGRAPHIC_FILE_ID}" \
+  -preparer "${DATA_PREPARER_ID}" \
+  -publisher "${PUBLISHER_ID}" \
+  -sysid "${SYSTEM_ID}" \
+  -volid "${VOLUME_ID}" \
+  -volset "${VOLUME_SET_ID}" \
   -no-emul-boot \
   -b boot/etfsboot.com \
   -boot-load-seg "${BOOT_LOAD_SEG}" \
   -boot-load-size "${BOOT_LOAD_SIZE}" \
   -eltorito-alt-boot \
-  -e boot.efi.img \
   -no-emul-boot \
-  -iso-level 2 \
-  -boot-info-table \
-  -udf \
-  -D \
-  -N \
-  -relaxed-filenames \
-  -allow-lowercase \
+  -b efi/win_efi_boot.img \
+  -boot-load-size 1 \
+  -iso-level 4 \
+  -UDF \
   -o "${WIN10_IMG}.tmp.iso" \
   "${ISO_FILES}"
+
+  #-e boot.efi.img \
+  #-boot-info-table \
+  #-D \
+  #-N \
+  #-relaxed-filenames \
+  #-allow-lowercase \
+  #-o "${WIN10_IMG}.tmp.iso" \
+  #"${ISO_FILES}"
 rm ".mkisofsrc"
 
 echo "BOOT_LOAD_SEG: ${BOOT_LOAD_SEG}"
