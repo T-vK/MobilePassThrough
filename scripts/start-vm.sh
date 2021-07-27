@@ -207,8 +207,14 @@ if [ "$USE_LOOKING_GLASS" = true ]; then
     done
     LOOKING_GLASS_BUFFER_SIZE="${BUFFER_SIZE}M"
     echo "> Looking Glass buffer size set to: ${LOOKING_GLASS_BUFFER_SIZE}"
-    QEMU_PARAMS+=("-device" "ivshmem-plain,memdev=ivshmem,bus=pcie.0")
-    QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}")
+    if [ "$VM_START_MODE" = "qemu" ]; then
+        QEMU_PARAMS+=("-device" "ivshmem-plain,memdev=ivshmem,bus=pcie.0")
+        QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}")
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        VIRT_INSTALL_PARAMS+=("--xml xpath.set=./devices/shmem/model/@type=ivshmem-plain")
+        VIRT_INSTALL_PARAMS+=("--xml xpath.set=./devices/shmem/size=32")
+        VIRT_INSTALL_PARAMS+=("--xml xpath.set=./devices/shmem/size/@unit=M")
+    fi
 else
     echo "> Not using Looking Glass..."
 fi
