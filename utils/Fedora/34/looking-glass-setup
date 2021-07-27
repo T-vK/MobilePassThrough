@@ -12,7 +12,7 @@ cd "${PROJECT_DIR}/thirdparty"
 
 sudo dnf install -y binutils-devel cmake texlive-gnu-freefont fontconfig-devel SDL2-devel SDL2_ttf-devel spice-protocol libX11-devel nettle-devel wayland-protocols-devel gcc libXScrnSaver-devel libXfixes-devel libXi-devel wayland-devel mingw64-gcc-c++ mingw32-nsis
 
-LOOKING_GLASS_VERSION="B3"
+LOOKING_GLASS_VERSION="B4"
 
 # Build the (Linux) client application
 git clone --single-branch --branch "${LOOKING_GLASS_VERSION}" --depth 1 --recursive https://github.com/gnif/LookingGlass.git
@@ -21,10 +21,8 @@ cd LookingGlass/client/build
 cmake ../
 make
 
-TMP_USER_NAME="$(logname)"
-TMP_USER_ID="$(id -u "$TMP_USER_NAME")"
 sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
-sudo bash -c "echo 'f /dev/shm/looking-glass ${TMP_USER_ID} ${TMP_USER_NAME} kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
+sudo bash -c "echo 'f /dev/shm/looking-glass 0660 $(logname) kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
 
 # Build the (Windows) host application
 cd "${PROJECT_DIR}/thirdparty"

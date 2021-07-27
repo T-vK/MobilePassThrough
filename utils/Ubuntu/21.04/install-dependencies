@@ -3,7 +3,7 @@
 echo "Updating software..."
 sudo apt upgrade -y
 echo "Installing some useful tools..."
-sudo apt install -y wget curl vim screen git crudini lshw msr-tools sysfsutils uml-utilities remmina samba spice-client-gtk genisoimage uuid acpica-tools docker
+sudo apt install -y wget curl vim screen git crudini lshw msr-tools sysfsutils uml-utilities remmina samba spice-client-gtk genisoimage uuid acpica-tools docker e2fsprogs imake g++
 echo "Installing virtualization software..."
 sudo apt install qemu-kvm qemu-utils qemu-efi ovmf qemu -y
 

@@ -128,6 +128,8 @@ QEMU_PARAMS+=("-device" "pci-bridge,addr=12.0,chassis_nr=2,id=head.2")
 VIRT_INSTALL_PARAMS+=("--virt-type" "kvm")
 VIRT_INSTALL_PARAMS+=("--os-variant" "win10")
 VIRT_INSTALL_PARAMS+=("--arch=x86_64")
+VIRT_INSTALL_PARAMS+=("--unattended")
+VIRT_INSTALL_PARAMS+=("--initrd-inject=/home/fedora/Projects/MobilePassThrough/autounattend-vfd-files/Autounattend.xml")
 
 if [[ ${DRIVE_IMG} == /dev/* ]]; then
     echo "> Using a physical OS drive..."
@@ -210,11 +212,17 @@ if [ "$USE_LOOKING_GLASS" = true ]; then
     if [ "$VM_START_MODE" = "qemu" ]; then
         QEMU_PARAMS+=("-device" "ivshmem-plain,memdev=ivshmem,bus=pcie.0")
         QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}")
+        SHM_LOOKING_GLASS_OWNER="$(logname)"
     elif [ "$VM_START_MODE" = "virt-install" ]; then
-        VIRT_INSTALL_PARAMS+=("--xml xpath.set=./devices/shmem/model/@type=ivshmem-plain")
-        VIRT_INSTALL_PARAMS+=("--xml xpath.set=./devices/shmem/size=32")
-        VIRT_INSTALL_PARAMS+=("--xml xpath.set=./devices/shmem/size/@unit=M")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/@name=looking-glass")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/model/@type=ivshmem-plain")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size=32")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size/@unit=M")
+        SHM_LOOKING_GLASS_OWNER="qemu"
     fi
+    sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
+    sudo bash -c "echo 'f /dev/shm/looking-glass 0660 ${SHM_LOOKING_GLASS_OWNER} kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
+    sudo systemd-tmpfiles --create --prefix=/dev/shm/looking-glass
 else
     echo "> Not using Looking Glass..."
 fi
@@ -308,11 +316,12 @@ fi
 
 if [ "$USE_SPICE" = true ]; then
     echo "> Using spice on port ${SPICE_PORT}..."
-    QEMU_PARAMS+=("-spice" "port=${SPICE_PORT},addr=127.0.0.1,disable-ticketing") #Spice
+    #QEMU_PARAMS+=("-spice" "port=${SPICE_PORT},addr=127.0.0.1,disable-ticketing") #Spice
     if [ "$VM_START_MODE" = "qemu" ]; then
         QEMU_PARAMS+=("-spice" "port=${SPICE_PORT},addr=127.0.0.1,disable-ticketing") #Spice
     elif [ "$VM_START_MODE" = "virt-install" ]; then
-        VIRT_INSTALL_PARAMS+=("--channel" "spicevmc")
+        VIRT_INSTALL_PARAMS+=("--channel" "spicevmc,target.address=127.0.0.1:${SPICE_PORT}")
+        #VIRT_INSTALL_PARAMS+=("--graphics" "spice,port=${SPICE_PORT}")
     fi
 else
     echo "> Not using Spice..."
@@ -431,8 +440,8 @@ sudo virsh destroy --domain WindowsVM &> /dev/null
 sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
 
 if [ "$VM_START_MODE" = "qemu" ]; then
-    echo "> Starting the spice client..."
-    spicy -h localhost -p 5900 &
+    echo "> Starting the spice client @${SPICE_PORT}..."
+    spicy -h localhost -p "${SPICE_PORT}" &
     echo "> Starting the Virtual Machine using qemu..."
     sudo qemu-system-x86_64 "${QEMU_PARAMS[@]}"
 elif [ "$VM_START_MODE" = "virt-install" ]; then
@@ -444,6 +453,9 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
 fi
 
+# Delete VM
+sudo virsh destroy --domain WindowsVM &> /dev/null
+sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
 
 # This gets executed when the vm exits
 if [ "$DGPU_PASSTHROUGH" = true ]; then

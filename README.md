@@ -273,3 +273,4 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 - Use virt-install to fully automate the windows installation
 - Add support for multiple VMs
 - Add support for Linux guests
+- Sanity checks for setup scritps (i.e. check if binaries have actually been compiled / installed) 

@@ -37,6 +37,8 @@ sudo $DISTRO_UTILS_DIR/vbios-finder-installer
 
 sudo $DISTRO_UTILS_DIR/looking-glass-setup
 
+sudo $UTILS_DIR/schily-tools-setup
+
 echo "Make sure you didn't get any critical errors above."
 echo "Then reboot!"
 echo "After the reboot you can check if your device is compatible by running: ./mbpt.sh check"
