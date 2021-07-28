@@ -6,8 +6,6 @@ UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 VM_FILES_DIR="${PROJECT_DIR}/vm-files"
-="${PROJECT_DIR}/vm-files"
-_DIR="${PROJECT_DIR}/vm-files"
 
 mkdir -p "${PROJECT_DIR}/thirdparty"
 cd "${PROJECT_DIR}/thirdparty"
@@ -17,7 +15,6 @@ git clone https://github.com/coderobe/VBiosFinder.git
 cd VBiosFinder
 
 sudo apt install ruby ruby-rubygems ruby-bundler ruby-dev p7zip innoextract upx -y
-
 
 wget https://github.com/LongSoft/UEFITool/releases/download/A58/UEFIExtract_NE_A58_linux_x86_64.zip -O ./UEFIExtract.zip
 unzip ./UEFIExtract.zip -d ./3rdparty/

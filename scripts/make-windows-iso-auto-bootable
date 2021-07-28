@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
+UTILS_DIR="${PROJECT_DIR}/utils"
+DISTRO=$("${UTILS_DIR}/distro-info")
+DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+
 # WARNING: THIS SCRIPT DOES NOT WORK YET!
 # WARNING: THIS SCRIPT DOES NOT WORK YET!
 # WARNING: THIS SCRIPT DOES NOT WORK YET!
@@ -11,7 +17,7 @@ TMP="./tmp"
 ISO_FILES="${TMP}/iso-files"
 ISO_MP="${TMP}/iso-mountpoint"
 
-rm -rf "${TMP}"
+sudo rm -rf "${TMP}"
 mkdir -p "${ISO_FILES}"
 mkdir -p "${ISO_MP}"
 sudo mount -t udf "${WIN10_IMG}" "${ISO_MP}"
@@ -38,33 +44,41 @@ EFI_STARTING_SECTOR="$(dumpet -i "${WIN10_IMG}" | grep "Load LBA: " | grep -o "[
 
 echo "EFI_STARTING_SECTOR: $EFI_STARTING_SECTOR"
 
-dd if="${WIN10_IMG}" of="${ISO_FILES}/efi.dmp" bs=2048 count=1 skip="${EFI_STARTING_SECTOR}"
+sudo dd if="${WIN10_IMG}" of="${ISO_FILES}/efi.dmp" bs=2048 count=1 skip="${EFI_STARTING_SECTOR}"
 EFI_BOOT_LOAD_SIZE="$(file "${ISO_FILES}/efi.dmp" | grep -oP 'sectors (\d+)' | cut -d ' ' -f2)"
 echo "EFI_BOOT_LOAD_SIZE: $EFI_BOOT_LOAD_SIZE"
-rm -f "${ISO_FILES}/efi.dmp"
-dd if="${WIN10_IMG}" of="${ISO_FILES}/boot_efi.img" bs=2048 count="${EFI_BOOT_LOAD_SIZE}" skip="${EFI_STARTING_SECTOR}"
+sudo rm -f "${ISO_FILES}/efi.dmp"
+sudo rm -f "${ISO_FILES}/efi/win_efi_boot.img"
+sudo dd if="${WIN10_IMG}" of="${ISO_FILES}/efi/win_efi_boot.img" bs=2048 count="${EFI_BOOT_LOAD_SIZE}" skip="${EFI_STARTING_SECTOR}"
 
-mkdir -p /tmp/bbb
-sudo mount -o loop,ro "${ISO_FILES}/boot_efi.img" /tmp/bbb
-sudo cp /tmp/bbb/EFI/BOOT/BOOTX64.EFI "${ISO_FILES}/boot.efi"
+sudo rm -rf "${ISO_FILES}/efi/microsoft/boot/cdboot.efi"
+sudo mv "${ISO_FILES}/efi/microsoft/boot/cdboot_noprompt.efi" "${ISO_FILES}/efi/microsoft/boot/cdboot.efi"
+sudo rm -rf "${ISO_FILES}/efi/microsoft/boot/efisys.bin"
+sudo mv "${ISO_FILES}/efi/microsoft/boot/efisys_noprompt.bin" "${ISO_FILES}/efi/microsoft/boot/efisys.bin"
+
+#mkdir -p /tmp/bbb
+#sudo mount -o loop,ro "${ISO_FILES}/boot_efi.img" /tmp/bbb
+#sudo cp /tmp/bbb/EFI/BOOT/BOOTX64.EFI "${ISO_FILES}/boot.efi"
+
 #sudo umount /tmp/bbb
 #sudo rm -f "${ISO_FILES}/boot.efi.img"
-exit
+
 
 # Extract meta data :
 SYSTEM_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "System id: " | cut -d ' ' -f3-)"
 VOLUME_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Volume id: " | cut -d ' ' -f3-)"
 VOLUME_SET_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Volume set id: " | cut -d ' ' -f4-)"
-#PUBLISHER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Publisher id: " | cut -d ' ' -f3-)" # Always uppercase
-PUBLISHER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "ID '" | cut -d "'" -f2)"
+PUBLISHER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Publisher id: " | cut -d ' ' -f3-)" # Always uppercase
+ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "ID '" | cut -d "'" -f2)"
 DATA_PREPARER_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Data preparer id: " | cut -d ' ' -f4-)"
 APPLICATION_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Application id: " | cut -d ' ' -f3-)"
 COPYRIGHT_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Copyright file id: " | cut -d ' ' -f4-)"
 ABSTRACT_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Abstract file id: " | cut -d ' ' -f4-)"
 BIBLIOGRAPHIC_FILE_ID="$(isoinfo -d -i "${WIN10_IMG}" | grep "Bibliographic file id: " | cut -d ' ' -f4-)"
 
-sudo rm "${WIN10_IMG}.tmp.iso"
-sudo mkisofs \
+
+sudo rm -f "${WIN10_IMG}.tmp.iso"
+sudo "${PROJECT_DIR}/thirdparty/schily-tools/mkisofs/OBJ/x86_64-linux-gcc/mkisofs" \
   -appid "${APPLICATION_ID}" \
   -copyright "${COPYRIGHT_FILE_ID}" \
   -abstract "${ABSTRACT_FILE_ID}" \
@@ -80,7 +94,7 @@ sudo mkisofs \
   -boot-load-size "${BOOT_LOAD_SIZE}" \
   -eltorito-alt-boot \
   -no-emul-boot \
-  -b efi/win_efi_boot.img \
+  -eltorito-boot "efi/win_efi_boot.img" \
   -boot-load-size 1 \
   -iso-level 4 \
   -UDF \
@@ -95,7 +109,7 @@ sudo mkisofs \
   #-allow-lowercase \
   #-o "${WIN10_IMG}.tmp.iso" \
   #"${ISO_FILES}"
-rm ".mkisofsrc"
+
 
 echo "BOOT_LOAD_SEG: ${BOOT_LOAD_SEG}"
 echo "BOOT_LOAD_SIZE: ${BOOT_LOAD_SIZE}"
@@ -104,6 +118,7 @@ echo "SYSTEM_ID: ${SYSTEM_ID}"
 echo "VOLUME_ID: ${VOLUME_ID}"
 echo "VOLUME_SET_ID: ${VOLUME_SET_ID}"
 echo "PUBLISHER_ID: ${PUBLISHER_ID}"
+echo "ID: ${ID}"
 echo "DATA_PREPARER_ID: ${DATA_PREPARER_ID}"
 echo "APPLICATION_ID: ${APPLICATION_ID}"
 echo "COPYRIGHT_FILE_ID: ${COPYRIGHT_FILE_ID}"
@@ -114,12 +129,12 @@ echo "BIBLIOGRAPHIC_FILE_ID: ${BIBLIOGRAPHIC_FILE_ID}"
 # Show difference between new and old image as reported by isoinfo
 echo
 echo "-------------- isoinfo diff -----------------"
-diff <(isoinfo -d -i "${WIN10_IMG}") <(isoinfo -d -i "${WIN10_IMG}.tmp.iso")
+colordiff <(isoinfo -d -i "${WIN10_IMG}") <(isoinfo -d -i "${WIN10_IMG}.tmp.iso")
 
 # Show difference between new and old image as reported by dumpet
 echo
 echo " -------------- dumpet diff -----------------"
-diff <(dumpet -i "${WIN10_IMG}") <(dumpet -i "${WIN10_IMG}.tmp.iso")
+colordiff <(dumpet -i "${WIN10_IMG}") <(dumpet -i "${WIN10_IMG}.tmp.iso")
 
 
 

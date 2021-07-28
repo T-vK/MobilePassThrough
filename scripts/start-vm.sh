@@ -129,7 +129,6 @@ VIRT_INSTALL_PARAMS+=("--virt-type" "kvm")
 VIRT_INSTALL_PARAMS+=("--os-variant" "win10")
 VIRT_INSTALL_PARAMS+=("--arch=x86_64")
 VIRT_INSTALL_PARAMS+=("--unattended")
-VIRT_INSTALL_PARAMS+=("--initrd-inject=/home/fedora/Projects/MobilePassThrough/autounattend-vfd-files/Autounattend.xml")
 
 if [[ ${DRIVE_IMG} == /dev/* ]]; then
     echo "> Using a physical OS drive..."
