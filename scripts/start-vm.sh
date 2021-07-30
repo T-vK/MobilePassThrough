@@ -83,12 +83,6 @@ QEMU_PARAMS+=("-boot" "order=d")
 QEMU_PARAMS+=("-k" "en-us")
 
 if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-drive" "file=${INSTALL_IMG},index=1,media=cdrom")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--cdrom" "${INSTALL_IMG}")
-fi
-
-if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-drive" "file=${VIRTIO_WIN_IMG},index=2,media=cdrom")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--cdrom" "${VIRTIO_WIN_IMG}")
@@ -106,11 +100,11 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--cdrom" "${INSTALL_IMG}")
 fi
 
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-fda" "${VIRTIO_WIN_VFD}")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--disk" "device=floppy,path=${VIRTIO_WIN_VFD}")
-fi
+#if [ "$VM_START_MODE" = "qemu" ]; then
+#    QEMU_PARAMS+=("-fda" "${VIRTIO_WIN_VFD}")
+#elif [ "$VM_START_MODE" = "virt-install" ]; then
+#    VIRT_INSTALL_PARAMS+=("--disk" "device=floppy,path=${VIRTIO_WIN_VFD}")
+#fi
 
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-fdb" "${AUTOUNATTEND_WIN_VFD}")
@@ -128,7 +122,7 @@ QEMU_PARAMS+=("-device" "pci-bridge,addr=12.0,chassis_nr=2,id=head.2")
 VIRT_INSTALL_PARAMS+=("--virt-type" "kvm")
 VIRT_INSTALL_PARAMS+=("--os-variant" "win10")
 VIRT_INSTALL_PARAMS+=("--arch=x86_64")
-VIRT_INSTALL_PARAMS+=("--unattended")
+#VIRT_INSTALL_PARAMS+=("--unattended")
 
 if [[ ${DRIVE_IMG} == /dev/* ]]; then
     echo "> Using a physical OS drive..."
@@ -155,6 +149,15 @@ else
     echo "> Error: It appears that no proper OS drive (image) has been provided. Check your 'DRIVE_IMG' var: '${DRIVE_IMG}'"
     exit
 fi
+
+echo "Generating vFloppy for auto Widnows Installation..."
+sudo ${SCRIPT_DIR}/generate-auto-unattended-vfd.sh
+# TODO: add check if files have changed and vfd needs to be regenerated
+
+echo "Generating helper-iso for auto Windows Configuration / Driver installation..."
+sudo ${SCRIPT_DIR}/generate-helper-iso.sh
+# TODO: add check if files have changed and helper iso needs to be regenerated
+
 
 if [ ! -f "${OVMF_VARS_VM}" ]; then
     echo "> Creating OVMF_VARS copy for this VM..."
@@ -222,24 +225,9 @@ if [ "$USE_LOOKING_GLASS" = true ]; then
     sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
     sudo bash -c "echo 'f /dev/shm/looking-glass 0660 ${SHM_LOOKING_GLASS_OWNER} kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
     sudo systemd-tmpfiles --create --prefix=/dev/shm/looking-glass
+    sudo setfacl --modify user:$(logname):rw "/dev/shm/looking-glass"
 else
     echo "> Not using Looking Glass..."
-fi
-
-if [ -z "$DGPU_ROM" ]; then
-    echo "> Not using DGPU vBIOS override..."
-    DGPU_ROM_PARAM=",rombar=0"
-else
-    echo "> Using DGPU vBIOS override..."
-    DGPU_ROM_PARAM=",romfile=${DGPU_ROM}"
-fi
-
-if [ -z "$IGPU_ROM" ]; then
-    echo "> Not using DGPU vBIOS override..."
-    IGPU_ROM_PARAM=",rombar=0"
-else
-    echo "> Using DGPU vBIOS override..."
-    IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
 fi
 
 if [ -z "$SMB_SHARE_FOLDER" ]; then
@@ -258,19 +246,35 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
     #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
     # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
     if [ "$VM_START_MODE" = "qemu" ]; then
-        QEMU_PARAMS+=("-device" "ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=root.1") # DGPU root port
+        QEMU_PARAMS+=("-device" "ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=pci.1") # DGPU root port
     elif [ "$VM_START_MODE" = "virt-install" ]; then
-        VIRT_INSTALL_PARAMS+=("--controller" "type=pci,model=pcie-root-port" "--xml xpath.set=./devices/controller/model/@name=ioh3420") # <controller type='pci' model='pcie-root-port'><model name='ioh3420'/></controller>
+        VIRT_INSTALL_PARAMS+=("--controller" "type=pci,model=pcie-root-port,address.type=pci,address.bus=0x0,address.slot=0x1c,address.function=0x0,address.multifunction=on,index=1,alias.name=pci.1") # <controller type='pci' model='pcie-root-port'><model name='ioh3420'/></controller>
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/controller/model/@name=ioh3420")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/controller/target/@chassis=1")
     fi
 
-    # TODO: when the VM boots, check what chassis and slot libvirt allocates. Then plug that into the vfio-pci line.
-    QEMU_PARAMS+=("-device" "vfio-pci,host=${DGPU_PCI_ADDRESS},bus=root.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}")
-
-    #if [ "$VM_START_MODE" = "qemu" ]; then
-    #    QEMU_PARAMS+=("-device" "vfio-pci,host=${DGPU_PCI_ADDRESS},bus=root.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}")
-    #elif [ "$VM_START_MODE" = "virt-install" ]; then
-    #    VIRT_INSTALL_PARAMS+=("--hostdev" "${DGPU_PCI_ADDRESS},address.type=pci,address.multifunction=on,address") # TODO: not complete; i.e. rom file param missing
-    #fi
+    if [ "$VM_START_MODE" = "qemu" ]; then
+        if [ -z "$DGPU_ROM" ]; then
+            echo "> Not using DGPU vBIOS override..."
+            DGPU_ROM_PARAM=",rombar=0"
+        else
+            echo "> Using DGPU vBIOS override..."
+            DGPU_ROM_PARAM=",romfile=${DGPU_ROM}"
+        fi
+        QEMU_PARAMS+=("-device" "vfio-pci,host=${DGPU_PCI_ADDRESS},bus=pci.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}")
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        if [ -z "$DGPU_ROM" ]; then
+            echo "> Not using DGPU vBIOS override..."
+            DGPU_ROM_PARAM=",rom.bar=on"
+        fi
+        VIRT_INSTALL_PARAMS+=("--hostdev" "${DGPU_PCI_ADDRESS},address.bus=1,address.type=pci,address.multifunction=on${DGPU_ROM_PARAM}")
+        if [ ! -z "$DGPU_ROM" ]; then
+            echo "> Using DGPU vBIOS override..."
+            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev/rom/@file=${DGPU_ROM}")
+            QEMU_PARAMS+=("-set" "device.hostdev0.x-pci-sub-device-id=$((16#${DGPU_SS_DEVICE_ID}))")
+            QEMU_PARAMS+=("-set" "device.hostdev0.x-pci-sub-vendor-id=$((16#${DGPU_SS_VENDOR_ID}))")
+        fi
+    fi
 else
     echo "> Not using dGPU passthrough..."
 fi
@@ -291,24 +295,52 @@ if [ "$SHARE_IGPU" = true ]; then
             exit 1
         fi
     fi
-
-    if [ "$USE_DMA_BUF" = true ]; then
-        echo "> Using dma-buf..."
-        QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
-        GVTG_DISPLAY_STATE="on"
-    else
-        echo "> Not using dma-buf..."
-        GVTG_DISPLAY_STATE="off"
-    fi
-    
-    QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on${IGPU_ROM_PARAM},display=${GVTG_DISPLAY_STATE}") # GVT-G
     
     # TODO: same as for iGPU
-    #if [ "$VM_START_MODE" = "qemu" ]; then
-    #    QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=02.0,sysfsdev=/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/${VGPU_UUID},x-igd-opregion=on${IGPU_ROM_PARAM},display=${GVTG_DISPLAY_STATE}") # GVT-G
-    #elif [ "$VM_START_MODE" = "virt-install" ]; then
-    #    VIRT_INSTALL_PARAMS+=("--hostdev" "")
-    #fi
+    if [ "$VM_START_MODE" = "qemu" ]; then
+
+        if [ "$USE_DMA_BUF" = true ]; then
+            echo "> Using dma-buf..."
+            QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+            DMA_BUF_PARAM=",display=on,x-igd-opregion=on"
+        else
+            echo "> Not using dma-buf..."
+            DMA_BUF_PARAM=""
+        fi
+
+        if [ -z "$IGPU_ROM" ]; then
+            echo "> Not using IGPU vBIOS override..."
+            IGPU_ROM_PARAM=",rom.bar=on"
+        else
+            echo "> Using IGPU vBIOS override..."
+            IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
+        fi
+
+        QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=05.0,sysfsdev=/sys/bus/mdev/devices/${VGPU_UUID}${IGPU_ROM_PARAM}${DMA_BUF_PARAM}") # GVT-G
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        if [ "$USE_DMA_BUF" = true ]; then
+            echo "> Using dma-buf..."
+            #QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+            QEMU_PARAMS+=("-set" "device.hostdev1.x-igd-opregion=on")
+            GVTG_DISPLAY_STATE="on"
+        else
+            echo "> Not using dma-buf..."
+            GVTG_DISPLAY_STATE="off"
+        fi
+
+        if [ -z "$IGPU_ROM" ]; then
+            echo "> Not using IGPU vBIOS override..."
+            IGPU_ROM_PARAM=",rom.bar=on"
+        fi
+        VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/@model=vfio-pci")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
+        
+        if [ ! -z "$IGPU_ROM" ]; then
+            echo "> Using IGPU vBIOS override..."
+            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
+        fi
+    fi
 else
     echo "> Not using mediated iGPU passthrough..."
 fi
@@ -434,29 +466,62 @@ give_qemu_access "${INSTALL_IMG}"
 #sudo bash -c "echo 'user = root' >> /etc/libvirt/qemu.conf"
 #sudo systemctl restart libvirtd
 
-# Delete VM
-sudo virsh destroy --domain WindowsVM &> /dev/null
-sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
 
 if [ "$VM_START_MODE" = "qemu" ]; then
     echo "> Starting the spice client @${SPICE_PORT}..."
     spicy -h localhost -p "${SPICE_PORT}" &
     echo "> Starting the Virtual Machine using qemu..."
+    echo ""
+
+    printf "sudo qemu-system-x86_64"
+    for param in "${QEMU_PARAMS[@]}"; do
+        if [[ "${param}" == -* ]]; then 
+            printf " \\\\\n  ${param}"
+        elif [[ $param = *" "* ]]; then
+            printf " \"${param}\""
+        else
+            printf " ${param}"
+        fi
+    done
+    echo ""
+    echo ""
     sudo qemu-system-x86_64 "${QEMU_PARAMS[@]}"
 elif [ "$VM_START_MODE" = "virt-install" ]; then
+    # Delete VM
+    sudo virsh destroy --domain WindowsVM &> /dev/null
+    sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
     echo "> Starting the Virtual Machine using virt-install..."
+
     #VIRT_INSTALL_PARAMS+=("--debug")
     for param in "${QEMU_PARAMS[@]}"; do
         VIRT_INSTALL_PARAMS+=("--qemu-commandline='${param}'")
     done
+
+    echo ""
+
+    printf "sudo virt-install"
+    for param in "${VIRT_INSTALL_PARAMS[@]}"; do
+        if [[ "${param}" == -* ]]; then 
+            printf " \\\\\n  ${param}"
+        elif [[ $param = *" "* ]]; then
+            printf " \"${param}\""
+        else
+            printf " ${param}"
+        fi
+    done
+    echo ""
+    echo ""
+
     sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
+
+    # Delete VM
+    sudo virsh destroy --domain WindowsVM &> /dev/null
+    sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
 fi
 
-# Delete VM
-sudo virsh destroy --domain WindowsVM &> /dev/null
-sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
 
 # This gets executed when the vm exits
+
 if [ "$DGPU_PASSTHROUGH" = true ]; then
     echo "> Unbinding dGPU from vfio driver..."
     driver unbind "${DGPU_PCI_ADDRESS}"
