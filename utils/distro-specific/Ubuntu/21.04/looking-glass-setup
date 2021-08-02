@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
-
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}/../../.."
-UTILS_DIR="${PROJECT_DIR}/utils"
-DISTRO=$("${UTILS_DIR}/distro-info")
-DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-VM_FILES_DIR="${PROJECT_DIR}/vm-files"
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/utils/helpers"
+loadConfig
 
 mkdir -p "${PROJECT_DIR}/thirdparty"
 cd "${PROJECT_DIR}/thirdparty"
 
-sudo dnf install -y binutils-devel cmake texlive-gnu-freefont fontconfig-devel SDL2-devel SDL2_ttf-devel spice-protocol libX11-devel nettle-devel wayland-protocols-devel gcc libXScrnSaver-devel libXfixes-devel libXi-devel wayland-devel mingw64-gcc-c++ mingw32-nsis
+sudo apt install binutils binutils-multiarch-dev cmake texlive-fonts-recommended fonts-freefont-ttf libfontconfig-dev libegl-dev libspice-protocol-dev libsdl2-dev nettle-dev libx11-dev libxi-dev libxinerama-dev libxss-dev libwayland-dev wayland-protocols
 
 LOOKING_GLASS_VERSION="B4"
 
 # Build the (Linux) client application
 git clone --single-branch --branch "${LOOKING_GLASS_VERSION}" --depth 1 --recursive https://github.com/gnif/LookingGlass.git
-mkdir  LookingGlass/client/build
+mkdir LookingGlass/client/build
 cd LookingGlass/client/build
 cmake ../
 make

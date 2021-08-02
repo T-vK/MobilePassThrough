@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}/../../.."
-UTILS_DIR="${PROJECT_DIR}/utils"
-DISTRO=$("${UTILS_DIR}/distro-info")
-DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-VM_FILES_DIR="${PROJECT_DIR}/vm-files"
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/utils/helpers"
+loadConfig
 
 source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
@@ -16,14 +12,16 @@ addKernelParam "nouveau.modeset=0"
 #sudo dnf remove xorg-x11-drv-nouveau -y
 
 echo "Install third party repositories"
-sudo add-apt-repository ppa:bumblebee/testing -y
+sudo dnf install fedora-workstation-repositories -y
 
+echo "Enable the Bumblebee repository"
+sudo dnf copr enable chenxiaolong/bumblebee -y
 
 echo "Install Bumblebee"
-sudo apt install bumblebee bumblebee-nvidia -y
+sudo dnf install akmod-bbswitch bumblebee primus -y
 
-echo "Make Bumblebee available to the current user"
-sudo gpasswd -a $(whoami) bumblebee
+echo "Make Bumblebee avialable to the current user"
+sudo gpasswd -a $(who -m | awk '{print $1;}') bumblebee
 
 echo "Enable Bumblebee autostart"
 sudo systemctl enable bumblebeed

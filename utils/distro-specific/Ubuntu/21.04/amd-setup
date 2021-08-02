@@ -3,5 +3,6 @@ while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f
 source "$PROJECT_DIR/utils/helpers"
 loadConfig
 
-sudo virsh destroy --domain "${VM_NAME}"
-sudo virsh undefine --domain "${VM_NAME}" --nvram
+source "$DISTRO_UTILS_DIR/kernel-param-utils"
+
+# This script doesn't do anything yet.

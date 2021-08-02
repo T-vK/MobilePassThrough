@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}/../../.."
-UTILS_DIR="${PROJECT_DIR}/utils"
-DISTRO=$("${UTILS_DIR}/distro-info")
-DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-VM_FILES_DIR="${PROJECT_DIR}/vm-files"
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/utils/helpers"
+loadConfig
 
 source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
@@ -17,6 +13,12 @@ addKernelParam "nouveau.modeset=0"
 
 echo "Install third party repositories"
 sudo dnf install fedora-workstation-repositories -y
+
+echo "Install third party repositories"
+sudo dnf config-manager rpmfusion-nonfree-nvidia-driver --set-enabled -y
+
+echo "Enable the NVIDIA driver repository"
+sudo dnf install akmod-nvidia acpi -y
 
 echo "Enable the Bumblebee repository"
 sudo dnf copr enable chenxiaolong/bumblebee -y
@@ -35,3 +37,5 @@ sudo systemctl mask nvidia-fallback
 
 echo "Start Bumblebee"
 sudo systemctl start bumblebeed
+
+sudo ${UTILS_DIR}/extract-vbios

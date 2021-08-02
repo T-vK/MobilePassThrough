@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
-UTILS_DIR="${PROJECT_DIR}/utils"
-DISTRO=$("${UTILS_DIR}/distro-info")
-DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/utils/helpers"
 
 #source "$UTILS_DIR/gpu-check"
 
@@ -82,7 +78,7 @@ interactiveCfg "Network mode to use? Only supports TAP at the moment." NETWORK_M
 interactiveCfg "Use Looking Glass to get super low latency video output." USE_LOOKING_GLASS
 interactiveCfg "Max screen width with Looking Glass." LOOKING_GLASS_MAX_SCREEN_WIDTH
 interactiveCfg "Max screen height with Looking Glass." LOOKING_GLASS_MAX_SCREEN_HEIGHT
-interactiveCfg "Version of Looking Glass to use (B3 is highly recommended)" LOOKING_GLASS_VERSION
+interactiveCfg "Version of Looking Glass to use (B4 is highly recommended)" LOOKING_GLASS_VERSION
 interactiveCfg "Enable spice. (Recommended for Looking Glass, required to install Windows)" USE_SPICE
 interactiveCfg "Port to use for spice." SPICE_PORT
 interactiveCfg "Enable dma-buf. (Yet another way to get display access to your VM)" USE_DMA_BUF

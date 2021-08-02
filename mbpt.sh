@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
-
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}"
-UTILS_DIR="${PROJECT_DIR}/utils"
-DISTRO=$("${UTILS_DIR}/distro-info")
-DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-USER_SCRIPTS_DIR="${PROJECT_DIR}/scripts"
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/utils/helpers"
 
 COMMAND="$1"
 

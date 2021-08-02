@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/utils/helpers"
 
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="$(readlink -f "${SCRIPT_DIR}/..")"
-UTILS_DIR="${PROJECT_DIR}/utils"
-DISTRO=$("${UTILS_DIR}/distro-info")
-DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-
-mkdir -p "${PROJECT_DIR}/thirdparty"
+mkdir -p "${THIRDPARTY_DIR}"
 
 function commandsAvailable() {
     commandsMissing=()
