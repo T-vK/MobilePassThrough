@@ -60,15 +60,21 @@ elif [ "$COMMAND" = "configure" ]; then
     "${USER_SCRIPTS_DIR}/generate-vm-config.sh"
 elif [ "$COMMAND" = "iso" ]; then
     "${USER_SCRIPTS_DIR}/generate-helper-iso.sh"
+elif [ "$COMMAND" = "install" ]; then
+    sudo "${USER_SCRIPTS_DIR}/start-vm.sh" install
 elif [ "$COMMAND" = "start" ]; then
     sudo "${USER_SCRIPTS_DIR}/start-vm.sh"
+elif [ "$COMMAND" = "auto" ]; then
+    sudo "${USER_SCRIPTS_DIR}/setup.sh"
+    sudo "${USER_SCRIPTS_DIR}/iommu-check.sh"
+    sudo "${USER_SCRIPTS_DIR}/start-vm.sh" install
 elif [ "$COMMAND" = "vbios" ]; then
-    if [ "$2" == "extract" ] ; then
+    if [ "$2" == "extract" ]; then
         mkdir -p "$4/"
         cd "${PROJECT_DIR}/thirdparty/VBiosFinder"
         ./vbiosfinder extract "$(readlink -f "$3")"
         mv "${PROJECT_DIR}/thirdparty/VBiosFinder/output/*" "$4/"
-    elif [ "$2" == "dump" ] ; then
+    elif [ "$2" == "dump" ]; then
         sudo "${UTILS_DIR}/extract-vbios" "$3" "$4"
     fi
-fi 
+fi

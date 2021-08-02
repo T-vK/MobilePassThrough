@@ -19,6 +19,7 @@ else
 fi
 
 mkdir -p "${PROJECT_DIR}/helper-iso-files/bin"
+mkdir -p "${PROJECT_DIR}/helper-iso-files/scripts"
 #if [ ! -f "${PROJECT_DIR}/helper-iso-files/bin/AutoHotkeyU64.exe" ]; then
 #    echo "> Downloading AutoHotkey..."
 #    rm -rf "${PROJECT_DIR}/helper-iso-files/tmp"
@@ -89,9 +90,15 @@ fi
 #    echo "> devcon driver tool already exist in iso folder..."
 #fi
 
+if [ ! -f "${PROJECT_DIR}/helper-iso-files/scripts/chcolatey-install.ps1" ]; then
+    echo "> Downloading Chocolatey install script..."
+    wget "https://chocolatey.org/install.ps1" -O "${PROJECT_DIR}/helper-iso-files/scripts/chcolatey-install.ps1"
+else
+    echo "> Chocolatey install script already exist in iso folder..."
+fi
+
 rm -rf "${PROJECT_DIR}/helper-iso-files/tmp"
 
-echo "> Generating new iso..."
 rm -f "${HELPER_ISO}"
-echo "genisoimage -J -joliet-long -r -allow-lowercase -allow-multidot -o \"${HELPER_ISO}\" \"${PROJECT_DIR}/helper-iso-files\""
-genisoimage -J -joliet-long -r -allow-lowercase -allow-multidot -o "${HELPER_ISO}" "${PROJECT_DIR}/helper-iso-files"
+#echo "genisoimage -quiet -input-charset utf-8 -J -joliet-long -r -allow-lowercase -allow-multidot -o \"${HELPER_ISO}\" \"${PROJECT_DIR}/helper-iso-files\""
+genisoimage -quiet -input-charset utf-8 -J -joliet-long -r -allow-lowercase -allow-multidot -o "${HELPER_ISO}" "${PROJECT_DIR}/helper-iso-files"

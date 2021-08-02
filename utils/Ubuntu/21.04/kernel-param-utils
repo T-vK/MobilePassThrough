@@ -45,3 +45,8 @@ function applyInitramfsChanges() {
     sudo dracut -f --kver `uname -r`
     #TODO: Find out if this needs to be executed again after every kernel update.
 }
+
+function runtimeKernelHasParam() {
+    cmdline="$(cat /proc/cmdline)"
+    [[ $cmdline =~ ^$1.* ]] || [[ $cmdline =~ .*$1$ ]] || [[ $cmdline = *" $1 "* ]]
+}

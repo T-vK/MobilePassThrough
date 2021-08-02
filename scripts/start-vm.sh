@@ -6,7 +6,12 @@ UTILS_DIR="${PROJECT_DIR}/utils"
 DISTRO=$("${UTILS_DIR}/distro-info")
 DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 
-VM_START_MODE="virt-install" # qemu or virt-install
+if [ "$1" = "install" ]; then
+    VM_INSTALL=true
+else
+    VM_INSTALL=false
+fi
+VM_START_MODE="qemu" # qemu or virt-install
 
 # If user.conf doesn't exist use the default.conf
 if [ -f "${PROJECT_DIR}/user.conf" ]; then
@@ -32,7 +37,7 @@ QEMU_PARAMS=()
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-name" "${VM_NAME}")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--name" "WindowsVM")
+    VIRT_INSTALL_PARAMS+=("--name" "${VM_NAME}")
 fi
 
 if [ "$VM_START_MODE" = "qemu" ]; then
@@ -79,38 +84,34 @@ QEMU_PARAMS+=("-nographic")
 QEMU_PARAMS+=("-serial" "none")
 QEMU_PARAMS+=("-parallel" "none")
 QEMU_PARAMS+=("-boot" "menu=on")
-QEMU_PARAMS+=("-boot" "order=d")
+QEMU_PARAMS+=("-boot" "once=d")
 QEMU_PARAMS+=("-k" "en-us")
+
+if [ $VM_INSTALL = true ]; then
+    if [ "$VM_START_MODE" = "qemu" ]; then
+        QEMU_PARAMS+=("-drive" "file=${INSTALL_IMG},index=1,media=cdrom")
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        VIRT_INSTALL_PARAMS+=("--cdrom" "${INSTALL_IMG}")
+    fi
+fi
 
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-drive" "file=${VIRTIO_WIN_IMG},index=2,media=cdrom")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--cdrom" "${VIRTIO_WIN_IMG}")
+    VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${VIRTIO_WIN_IMG}")
 fi
 
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-drive" "file=${HELPER_ISO},index=3,media=cdrom")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--cdrom" "${HELPER_ISO}")
-fi
-
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-drive" "file=${INSTALL_IMG},index=1,media=cdrom")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--cdrom" "${INSTALL_IMG}")
+    VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${HELPER_ISO}")
 fi
 
 #if [ "$VM_START_MODE" = "qemu" ]; then
-#    QEMU_PARAMS+=("-fda" "${VIRTIO_WIN_VFD}")
+#    QEMU_PARAMS+=("-fdb" "${AUTOUNATTEND_WIN_VFD}")
 #elif [ "$VM_START_MODE" = "virt-install" ]; then
-#    VIRT_INSTALL_PARAMS+=("--disk" "device=floppy,path=${VIRTIO_WIN_VFD}")
+#    VIRT_INSTALL_PARAMS+=("--disk" "device=floppy,path=${AUTOUNATTEND_WIN_VFD}")
 #fi
-
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-fdb" "${AUTOUNATTEND_WIN_VFD}")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--disk" "device=floppy,path=${AUTOUNATTEND_WIN_VFD}")
-fi
 #TODO: Uncomment!
 #QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")
 #QEMU_PARAMS+=("-device" "virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS}")
@@ -150,17 +151,9 @@ else
     exit
 fi
 
-echo "Generating vFloppy for auto Widnows Installation..."
-sudo ${SCRIPT_DIR}/generate-auto-unattended-vfd.sh
-# TODO: add check if files have changed and vfd needs to be regenerated
-
-echo "Generating helper-iso for auto Windows Configuration / Driver installation..."
-sudo ${SCRIPT_DIR}/generate-helper-iso.sh
-# TODO: add check if files have changed and helper iso needs to be regenerated
-
-
-if [ ! -f "${OVMF_VARS_VM}" ]; then
-    echo "> Creating OVMF_VARS copy for this VM..."
+if [ ! -f "${OVMF_VARS_VM}" ] || [ $VM_INSTALL = true ]; then
+    echo "> Creating fresh OVMF_VARS copy for this VM..."
+    sudo rm -f "${OVMF_VARS_VM}"
     sudo cp "${OVMF_VARS}" "${OVMF_VARS_VM}"
     sudo chown "$(whoami):$(id -gn "$(whoami)")" "${OVMF_VARS_VM}"
 fi
@@ -209,23 +202,20 @@ if [ "$USE_LOOKING_GLASS" = true ]; then
     while [[ $BUFFER_SIZE -le $UNROUNDED_BUFFER_SIZE ]]; do
         BUFFER_SIZE=$(($BUFFER_SIZE*2))
     done
-    LOOKING_GLASS_BUFFER_SIZE="${BUFFER_SIZE}M"
+    LOOKING_GLASS_BUFFER_SIZE="${BUFFER_SIZE}"
     echo "> Looking Glass buffer size set to: ${LOOKING_GLASS_BUFFER_SIZE}"
     if [ "$VM_START_MODE" = "qemu" ]; then
         QEMU_PARAMS+=("-device" "ivshmem-plain,memdev=ivshmem,bus=pcie.0")
-        QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}")
-        SHM_LOOKING_GLASS_OWNER="$(logname)"
+        QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}M")
     elif [ "$VM_START_MODE" = "virt-install" ]; then
         VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/@name=looking-glass")
         VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/model/@type=ivshmem-plain")
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size=32")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size=${LOOKING_GLASS_BUFFER_SIZE}")
         VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size/@unit=M")
-        SHM_LOOKING_GLASS_OWNER="qemu"
     fi
-    sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
-    sudo bash -c "echo 'f /dev/shm/looking-glass 0660 ${SHM_LOOKING_GLASS_OWNER} kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
-    sudo systemd-tmpfiles --create --prefix=/dev/shm/looking-glass
-    sudo setfacl --modify user:$(logname):rw "/dev/shm/looking-glass"
+    #sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
+    #sudo bash -c "echo 'f /dev/shm/looking-glass 0660 qemu kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
+    #sudo systemd-tmpfiles --create --prefix=/dev/shm/looking-glass
 else
     echo "> Not using Looking Glass..."
 fi
@@ -402,7 +392,12 @@ if [ "$PATCH_OVMF_WITH_VROM" = true ]; then
             sudo rm -rf "${PATCHED_OVMF_FILES_DIR}/tmp-build"
         fi
         OVMF_CODE="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"
-        OVMF_VARS_VM="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd"
+        if [ $VM_INSTALL = true ]; then
+            echo "> Creating fresh copy of patched OVMF VARS..."
+            rm -f "${OVMF_VARS_VM}"
+            sudo cp "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd" "${OVMF_VARS_VM}"
+        fi
+        #OVMF_VARS_VM="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd"
     else
         echo "> Not using patched OVMF..."
     fi
@@ -441,35 +436,45 @@ else
     echo "> Not using virtual input method for keyboard/mouse input..."
 fi
 
-give_qemu_access() {
-    local skip_root=true
-    local -a paths
-    IFS=/ read -r -a paths <<<"$1"
-    local i
-    for (( i = 1; i < ${#paths[@]}; i++ )); do
-        paths[i]="${paths[i-1]}/${paths[i]}"
-    done
-    paths[0]=/
-    for current_path in "${paths[@]}" ; do
-        if [ "$skip_root" = true ] && [ "${current_path}" = "/" ]; then
-            continue
-        fi
-        echo "> Granting qemu access to: '${current_path}'"
-        sudo setfacl --modify user:qemu:rx "${current_path}"
-        sudo chmod +x "${current_path}"
-    done
-    #sudo chmod 777 "$1"
-}
+#give_qemu_access() {
+#    local skip_root=true
+#    local -a paths
+#    IFS=/ read -r -a paths <<<"$1"
+#    local i
+#    for (( i = 1; i < ${#paths[@]}; i++ )); do
+#        paths[i]="${paths[i-1]}/${paths[i]}"
+#    done
+#    paths[0]=/
+#    for current_path in "${paths[@]}" ; do
+#        if [ "$skip_root" = true ] && [ "${current_path}" = "/" ]; then
+#            continue
+#        fi
+#        echo "> Granting qemu access to: '${current_path}'"
+#        sudo setfacl --modify user:qemu:rx "${current_path}"
+#        sudo chmod +x "${current_path}"
+#    done
+#    #sudo chmod 777 "$1"
+#}
 
-give_qemu_access "${INSTALL_IMG}"
+#give_qemu_access "${INSTALL_IMG}"
 
 #sudo bash -c "echo 'user = root' >> /etc/libvirt/qemu.conf"
 #sudo systemctl restart libvirtd
 
+if [ $VM_INSTALL = true ]; then
+    echo "> Deleting VM if it already exists..."
+    sudo virsh destroy --domain "${VM_NAME}" &> /dev/null
+    sudo virsh undefine --domain "${VM_NAME}" --nvram &> /dev/null
+fi
 
+echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
 if [ "$VM_START_MODE" = "qemu" ]; then
+    QEMU_PARAMS+=("-monitor" "unix:/tmp/${VM_NAME}-monitor,server,nowait")
+    bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
+
     echo "> Starting the spice client @${SPICE_PORT}..."
-    spicy -h localhost -p "${SPICE_PORT}" &
+    bash -c "sleep 2; spicy -h localhost -p ${SPICE_PORT}" &
+
     echo "> Starting the Virtual Machine using qemu..."
     echo ""
 
@@ -487,9 +492,8 @@ if [ "$VM_START_MODE" = "qemu" ]; then
     echo ""
     sudo qemu-system-x86_64 "${QEMU_PARAMS[@]}"
 elif [ "$VM_START_MODE" = "virt-install" ]; then
-    # Delete VM
-    sudo virsh destroy --domain WindowsVM &> /dev/null
-    sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
+    bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
+
     echo "> Starting the Virtual Machine using virt-install..."
 
     #VIRT_INSTALL_PARAMS+=("--debug")
@@ -497,32 +501,31 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
         VIRT_INSTALL_PARAMS+=("--qemu-commandline='${param}'")
     done
 
-    echo ""
+    #if [ $VM_INSTALL = true ]; then
+        echo ""
+        printf "sudo virt-install"
+        for param in "${VIRT_INSTALL_PARAMS[@]}"; do
+            if [[ "${param}" == -* ]]; then 
+                printf " \\\\\n  ${param}"
+            elif [[ $param = *" "* ]]; then
+                printf " \"${param}\""
+            else
+                printf " ${param}"
+            fi
+        done
+        echo ""
+        echo ""
+        sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
+    #else
+    #    virsh start "${VM_NAME}"
+    #fi
 
-    printf "sudo virt-install"
-    for param in "${VIRT_INSTALL_PARAMS[@]}"; do
-        if [[ "${param}" == -* ]]; then 
-            printf " \\\\\n  ${param}"
-        elif [[ $param = *" "* ]]; then
-            printf " \"${param}\""
-        else
-            printf " ${param}"
-        fi
-    done
-    echo ""
-    echo ""
-
-    sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
-
-    # Delete VM
-    sudo virsh destroy --domain WindowsVM &> /dev/null
-    sudo virsh undefine --domain WindowsVM --nvram &> /dev/null
 fi
-
 
 # This gets executed when the vm exits
 
 if [ "$DGPU_PASSTHROUGH" = true ]; then
+
     echo "> Unbinding dGPU from vfio driver..."
     driver unbind "${DGPU_PCI_ADDRESS}"
     if [ "$HOST_DGPU_DRIVER" = "nvidea" ] || [ "$HOST_DGPU_DRIVER" = "nuveau" ]; then
@@ -531,11 +534,15 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
     fi
     echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
     driver bind "${DGPU_PCI_ADDRESS}" "${HOST_DGPU_DRIVER}"
+
 fi
+
 if [ "$SHARE_IGPU" = true ]; then
+    echo "> Keeping Intel vGPU for next VM start..."
+
     # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
     #        So for now we can't create a new vGPU every time the VM starts.
-    echo "> Keeping Intel vGPU for next VM start..."
     #echo "> Remove Intel vGPU..."
     #vgpu remove "${IGPU_PCI_ADDRESS}" "${VGPU_UUID}"
+
 fi
