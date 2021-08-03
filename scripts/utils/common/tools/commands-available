@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+#####################################################################################################
+# Checks if all given commands are installed and if not print out the list of missing ones
+# Usage: `./commands-available`
+#####################################################################################################
+
+function commandsAvailable() {
+    commandsMissing=()
+    for currentCommand in $1; do
+        if ! command -v $currentCommand &> /dev/null; then
+            commandsMissing+=("$currentCommand")
+        fi
+    done
+    if ((${#commandsMissing[@]})); then
+        echo "Missing commands: ${commandsMissing[@]}"
+        return 1 # Some commands are missing
+    else
+        return 0
+    fi
+}
+
+commandsAvailable "$1"

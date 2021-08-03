@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
-source "$PROJECT_DIR/utils/helpers"
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+
+#####################################################################################################
+# This is the only script that you should really care about as a user of MobilePassThrough.
+# Usage: `./mbpt.sh --help`
+#####################################################################################################
 
 COMMAND="$1"
 
@@ -48,28 +53,30 @@ function printHelp() {
 if [ "$COMMAND" = "help" ] || [ "$COMMAND" = "--help" ] || [ "$COMMAND" = "-h" ] || [ "$COMMAND" = "" ]; then
     printHelp
 elif [ "$COMMAND" = "setup" ]; then
-    sudo "${USER_SCRIPTS_DIR}/setup.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/setup.sh"
 elif [ "$COMMAND" = "check" ]; then
-    sudo "${USER_SCRIPTS_DIR}/compatibility-check.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh"
 elif [ "$COMMAND" = "configure" ]; then
-    "${USER_SCRIPTS_DIR}/generate-vm-config.sh"
+    "${MAIN_SCRIPTS_DIR}/generate-vm-config.sh"
 elif [ "$COMMAND" = "iso" ]; then
-    "${USER_SCRIPTS_DIR}/generate-helper-iso.sh"
-elif [ "$COMMAND" = "install" ]; then
-    sudo "${USER_SCRIPTS_DIR}/start-vm.sh" install
+    "${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh"
+elif [ "$COMMAND" = "install" ] || [ "$COMMAND" = "create" ]; then
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install
+elif [ "$COMMAND" = "remove" ]; then
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" remove # TODO: implement this
 elif [ "$COMMAND" = "start" ]; then
-    sudo "${USER_SCRIPTS_DIR}/start-vm.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh"
 elif [ "$COMMAND" = "auto" ]; then
-    sudo "${USER_SCRIPTS_DIR}/setup.sh"
-    sudo "${USER_SCRIPTS_DIR}/iommu-check.sh"
-    sudo "${USER_SCRIPTS_DIR}/start-vm.sh" install
+    sudo "${MAIN_SCRIPTS_DIR}/setup.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/iommu-check.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install
 elif [ "$COMMAND" = "vbios" ]; then
     if [ "$2" == "extract" ]; then
         mkdir -p "$4/"
-        cd "${PROJECT_DIR}/thirdparty/VBiosFinder"
+        cd "${THIRDPARTY_DIR}/VBiosFinder"
         ./vbiosfinder extract "$(readlink -f "$3")"
-        mv "${PROJECT_DIR}/thirdparty/VBiosFinder/output/*" "$4/"
+        mv "${THIRDPARTY_DIR}/VBiosFinder/output/*" "$4/"
     elif [ "$2" == "dump" ]; then
-        sudo "${UTILS_DIR}/extract-vbios" "$3" "$4"
+        sudo "${COMMON_UTILS_SETUP_DIR}/extract-vbios" "$3" "$4"
     fi
 fi

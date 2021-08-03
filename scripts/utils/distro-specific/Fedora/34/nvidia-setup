@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+loadConfig
+
+source "$DISTRO_UTILS_DIR/kernel-param-utils"
+
+echo "Disable Nouveau drivers"
+addKernelParam "nouveau.modeset=0"
+#sudo grep -qxsF 'blacklist nouveau' "/etc/modprobe.d/blacklist.conf" || echo "blacklist nouveau" | sudo tee -a "/etc/modprobe.d/blacklist.conf" > /dev/null
+#sudo grep -qxsF 'exclude=xorg-x11*' "/etc/dnf/dnf.conf" || echo "exclude=xorg-x11*" | sudo tee -a "/etc/dnf/dnf.conf" > /dev/null
+#sudo dnf remove xorg-x11-drv-nouveau -y
+
+echo "Install third party repositories"
+sudo dnf install fedora-workstation-repositories -y
+
+echo "Install third party repositories"
+sudo dnf config-manager rpmfusion-nonfree-nvidia-driver --set-enabled -y
+
+echo "Enable the NVIDIA driver repository"
+sudo dnf install akmod-nvidia acpi -y
+
+echo "Enable the Bumblebee repository"
+sudo dnf copr enable chenxiaolong/bumblebee -y
+
+echo "Install Bumblebee"
+sudo dnf install akmod-bbswitch bumblebee primus -y
+
+echo "Make Bumblebee avialable to the current user"
+sudo gpasswd -a $(who -m | awk '{print $1;}') bumblebee
+
+echo "Enable Bumblebee autostart"
+sudo systemctl enable bumblebeed
+
+echo "Block nvidia-fallback service"
+sudo systemctl mask nvidia-fallback
+
+echo "Start Bumblebee"
+sudo systemctl start bumblebeed
+
+sudo ${COMMON_UTILS_SETUP_DIR}/extract-vbios

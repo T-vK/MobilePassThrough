@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+loadConfig
+
+cd "${THIRDPARTY_DIR}"
+
+rm -rf VBiosFinder
+git clone https://github.com/coderobe/VBiosFinder.git
+cd VBiosFinder
+
+sudo dnf install ruby rubygem-bundler ruby-devel p7zip innoextract upx -y
+
+wget https://github.com/LongSoft/UEFITool/releases/download/A58/UEFIExtract_NE_A58_linux_x86_64.zip -O ./UEFIExtract.zip
+unzip ./UEFIExtract.zip -d ./3rdparty/
+rm -f ./UEFIExtract.zip
+
+git clone https://github.com/awilliam/rom-parser.git
+cd rom-parser
+
+bundle install --path=vendor/bundle
+gem install bundler:1.17.3
+
+make
+mv ./rom-fixer ../3rdparty/
+mv ./rom-parser ../3rdparty/
+cd ..
+
+bundle install --path=vendor/bundle

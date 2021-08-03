@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+#####################################################################################################
+# This script has to be sourced and is not meant to be executed directly!
+# How to use: Insert the following two lines without the `#` symbols below the shebang of all scripts in this project that need it:
+# while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+# source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+#####################################################################################################
+
+
+SCRIPTS_DIR="${PROJECT_DIR}/scripts"
+  MAIN_SCRIPTS_DIR="${SCRIPTS_DIR}/main"
+  UTILS_DIR="${SCRIPTS_DIR}/utils"
+    COMMON_UTILS_DIR="${UTILS_DIR}/common"
+      COMMON_UTILS_LIB_DIR="${COMMON_UTILS_DIR}/lib"
+      COMMON_UTILS_SETUP_DIR="${COMMON_UTILS_DIR}/setup"
+      COMMON_UTILS_TOOLS_DIR="${COMMON_UTILS_DIR}/tools"
+    DISTRO_UTILS_DIR="${UTILS_DIR}/distro-specific/$("${COMMON_UTILS_TOOLS_DIR}/distro-info")"
+THIRDPARTY_DIR="${PROJECT_DIR}/thirdparty"
+ACPI_TABLES_DIR="${PROJECT_DIR}/acpi-tables"
+HELPER_ISO_FILES_DIR="${PROJECT_DIR}/helper-iso-files"
+LOG_BASE_DIR="${PROJECT_DIR}/logs"
+
+shopt -s expand_aliases
+
+# TODO create aliases for all scripts? (Maybe a bad idea because it makes debugging more difficult)
+
+function loadConfig() {
+    # If user.conf doesn't exist use the default.conf
+    if [ -f "${PROJECT_DIR}/user.conf" ]; then
+        echo "> Loading config from ${PROJECT_DIR}/user.conf"
+        source "${PROJECT_DIR}/user.conf"
+    elif [ -f "${PROJECT_DIR}/default.conf" ]; then
+        echo "> Warning: No user.conf found, falling back to default.conf"
+        echo "> Loading config from ${PROJECT_DIR}/default.conf"
+        source "${PROJECT_DIR}/default.conf"
+    else
+        echo "> Error: No user.conf or user.conf found!"
+        exit
+    fi
+}
