@@ -1,7 +1,7 @@
 # MobilePassThrough
 
 ## Introduction
-The goal of this project is to make GPU passthrough on notebooks as easy and accessible as possible.  
+The goal of this project is to make GPU passthrough on x64 notebooks/tablets as easy and accessible as possible.  
 To achieve that goal I have written a collection of scripts [accessible via mbpt.sh](https://github.com/T-vK/MobilePassThrough#how-to-use-mbptsh) that:
 
 ### On the host system (Linux):
@@ -36,7 +36,7 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 ## Currently supported distributions
 
  - Fedora 34
- - Ubuntu 21.04
+ - Ubuntu 21.04 (not tested in a while)
 
 ## Limitations
 
@@ -71,58 +71,20 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 
 ### Installation and configuration
 - Download and install [standard Fedora](https://getfedora.org/) or the [KDE version](https://spins.fedoraproject.org/kde/) or [Ubuntu](https://ubuntu.com/download/desktop) (ideally in UEFI mode!)
-- Make sure to create a user account (with administrator rights) (in case you are asked)
+- Make sure to create a user account (with administrator rights) (in case you are asked) so that you can use sudo
 - Open a terminal and install git by typing the following, pressing enter after each line:
 
 ``` bash
 sudo dnf install git -y # Install git
 git clone https://github.com/T-vK/MobilePassThrough.git # Clone the project
 cd MobilePassThrough # Enter the project directory
-./mbpt.sh setup # Dependency installation; kernel param config; bumblebee / nvidia driver installation; and much more ...
+./mbpt.sh setup # Install dependencies
+./mbpt.sh configure # Create a config file interactively
+./mbpt.sh auto # Dependency installation; kernel param config; bumblebee / nvidia driver installation; windows ISO download; reboot to load new kernel params; create a helper iso with drivers and autounattended config for Windows; create and start VM; install Windows in the VM fully unattended; install drivers and looking glass in the VM automatically; check for error 43 automatically and show a warning if it occurs
+# In the future start the VM with `./mbpt.sh start`
 ```
 
-- Reboot your system
-- Open a new terminal and type:
-
-``` bash
-cd MobilePassThrough # Enter the project directory
-./mbpt.sh check # Check if your system is compatible
-# If the script says that your system is compatible you may proceed:
-./mbpt.sh configure # Create a config file
-# Follow the instructions in your terminal! Then continue:
-./mbpt.sh iso # Generate an iso file containing tools, installers, drivers and a Batch script that we need later
-```
-
-### Installation of Windows 10 in the VM
-
-- Open TWO terminals, in the first one type:
-``` bash
-cd MobilePassThrough # Enter the project directory
-./mbpt.sh start # Start the VM for the first time
-# Make sure you didn't get any critical errors
-```
-
-- In the second one quickly type:
-``` bash
-spicy -h localhost -p 5900
-```
-- window should appear giving a GUI to interact with the VM and it will say something like "press any key to boot from cd now".
-- Press any key quickly!
-- The Windows installer will show. Go through it, it should be simple enough.
-- During the installation you may have to manually pick a disk driver for the virtual disk to be recognized. Click "Browse" and select `amd64\w10` from the `virtio-win` CD Drive.
-- You should set a password for your user account otherwise you'll have trouble with RDP.
-- Once Windows is installed, go to the virtual CD drive that contains the start.bat file and right-click it and click `Run as administrator` and make sure you didn't get any errors.
-- Reboot the VM.
-
-In the future when you want to start the VM, you can open 2 terminals:
-
-- In the first one run:
-``` bash
-cd MobilePassThrough # Enter the project directory
-./mbpt.sh start
-```
-
-- Open Remmina and connect to `rdp://192.168.99.2`
+- Once the installation finished you should be able to open Remmina and connect to `rdp://192.168.99.2`
 
 - Then in the second terminal run:
 ``` bash
@@ -227,18 +189,6 @@ Check out: https://gpu-passthrough.com/
 By modding your BIOS/UEFI, you can make features available and change settings that are hidden or non-existent by default. For example: show VT-d settings, show secure boot settings, show muxing related settings and much more. There is a good collection of modding tools on [this site here in the BIOS / UEFI tools section](https://forums.tweaktown.com/gigabyte/30530-overclocking-programs-system-info-benchmarking-stability-tools-post284763.html#post284763).  
 There are many BIOS modding forums out there with lots of people who are more than willing to help even if you're a complete beginner.
 
-# Configuring the Windows VM manually
-
- - (During the installation you may have to manually pick a disk driver for the virtual disk to be recognized. Click "Browse" and Select ?:\viostor\w10\amd64\ from the virtio-win CD Drive.)
- - After the installation open the Windows Device Manager and manually install missing drivers by rightclicking the devices with a warning symbol (not the graphics card though) -> "Update Driver" -> "Browse my computer for driver software" -> Click "Browse..." -> Select the virtio-win CD Drive -> Click OK -> Click Next.
- - If under "System devices" you have a device called "PCI standard RAM Controller", then you have to install a different driver for that by downloading [these drivers](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/upstream-virtio/virtio-win10-prewhql-0.1-161.zip), extracting them and then do the previous step for this device, but browse to the extracted folder instead and select that instead. The device should then show up as "IVSHMEM Device".
- - I also advice you to enable Widnows Remote Desktop ("Allow remote connections to this computer" in the System Properties)
- - For RDP to work properly you might have to set up a password for your Windows user
- - I'd also advice you to disable UAC by setting "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\EnableLUA" to 0 because the propts are hidden to Looking Glass.
- - Set a static IP for the virtio (TAP) Ethernet adapter in Windows. E.g. 192.168.99.2
- - If you want to use Looking Glass download and install the [Microsoft Visual C++ 2017 Redistributables Package](https://download.microsoft.com/download/8/9/D/89D195E1-1901-4036-9A75-FBE46443FC5A/VC_redist.x64.exe) and download the [latest release of the Looking Glass host](https://github.com/gnif/LookingGlass/releases)
- - I'd also put Looking Glass into the startup folder so that it runs automatically every time.
-
 ## Known issues
 - Sometimes the `./mbpt.sh start` command will fail to start the VM because of this error: "echo: write error: No space left on device". It happens while attempting to create a vGPU for the iGPU. I have no clue why this happens. Sometimes it works if you just try it again, sometimes you need to wait a few minutes before retrying, but other times you actually have to reboot the host system.
 
@@ -251,10 +201,20 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 
 ## TODO
 
+### High prio
+- Fix automatic Nvidia driver installation in the VM (fix chocolatey)
+- Add vm remove option to vm.sh
+- Finish the requirements.json
+- Automatically find and install dependencies by parsing the requirements.json
+- Fix static IP
+- Fix RDP
+- Fix Samba sharing
+- Generate libvirt XML
+
+### Low prio
 - Add nuveau driver compatibility
 - Allow the user to decide if he wants bumblebee or not (for Nvidia GPUs)
 - More detailed output about how the device is muxed
-- Fix unattended Windows installation
 - Create a bootable live version of this project
 - Create packages (deb, rpm, etc)
 - Add compatibility for Arch, Debian, etc...
@@ -264,13 +224,6 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 - Reduce the size of the ovmf-vbios-patch Docker image
 - Make the USB passthrough device selection easier (i.e. display a list of devices that can be selected)
 - Look into hotplugging and check if the GPU can be hotplugged during VM runtime
-- Generate libvirt XML
-- Check which kernel parameters are currently used to determine if a reboot is necessary
 - Check if required dependencies are installed for each script
-- Check if fake-battery has been built
-- Check if patched ovmf exists
-- Add a fully unattended mode that runs the setup, then reboots and continues running the compatibility check and creating/installing the VM and starting it.
-- Use virt-install to fully automate the windows installation
 - Add support for multiple VMs
 - Add support for Linux guests
-- Sanity checks for setup scritps (i.e. check if binaries have actually been compiled / installed) 
