@@ -9,7 +9,7 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 # usage: `./extract-vbios`
 #####################################################################################################
 
-function extractNvideaVbios() {
+function extractNvidiaVbios() {
     if which optirun ; then
         USE_BUMBLEBEE=true
         OPTIRUN_PREFIX="optirun "
@@ -25,7 +25,7 @@ function extractNvideaVbios() {
         chmod +x ${THIRDPARTY_DIR}/nvflash_linux
     fi
     mkdir -p "${VM_FILES_DIR}/vbios-roms"
-    sudo ${OPTIRUN_PREFIX}${THIRDPARTY_DIR}/nvflash_linux --save ${VM_FILES_DIR}/vbios-roms/nvidea_vbios.rom
+    sudo ${OPTIRUN_PREFIX}${THIRDPARTY_DIR}/nvflash_linux --save ${VM_FILES_DIR}/vbios-roms/nvidia_vbios.rom
 }
 
 function extractVbios() {
@@ -38,5 +38,5 @@ function extractVbios() {
 
 #echo "Attempting to extract the VBIOS ROM of the Nvidia GPU"
 #echo "This will probably fail. If you know how to fix it please open an issue and tell me."
-#extractNvideaVbios
+#extractNvidiaVbios
 extractVbios $1 $2

@@ -18,10 +18,10 @@ To achieve that goal I have written a collection of scripts [accessible via mbpt
 
 ### In the virtual machine (Windows)
 
-- [x] Automatically install the required drivers (ivshmem and other vfio drivers)
+- [x] Automatically install the required drivers (ivshmem, other vfio drivers, Intel/Nvidia display drivers)
 - [x] Automatically compile/install/start LookingGlass
 - [x] Automatically configure the network
-- [x] Automatically set up RDP
+- [ ] Automatically set up RDP
 - [x] Automatically install and autostart LookingGlass
 
 And there is also a lot of advanced stuff that I managed to fully automate, like:
@@ -42,7 +42,7 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 
 - The project is currently only compatible with Fedora and Ubuntu out of the box (Support for older Fedora/Ubuntu versions may break over time because I don't test changes made to this repo against older distributions.). (To add support for a new distro, copy one of the folders found in [utils](utils)) and adjust it for your distro.)
 - This project currently only supports Windows 10 x64 VMs and hopefully Windows 11 x64 VMs at some point. (For older Windows versions you have to figure out the driver installation etc. on your own.)
-- Only tested for Intel+Nvidea and Intel+AMD systems. (Although the compatibility-check (./mbpt.sh check) should actually work on any hardware.)
+- Only tested for Intel+Nvidia and Intel+AMD systems. (Although the compatibility-check (./mbpt.sh check) should actually work on any hardware.)
 - Expect bugs. I have only tested this on a handful of devices and I have constantly changed the scripts without testing everything every time.
 - Automated vBIOS ROM extraction will fail in most cases. You might have to extract it from a BIOS update. (You may not need the vBIOS ROM though.)
 - This project takes a couple of measures to circumvent Nvidia's infamous Error 43, which you normally see in the Windows device manager when you pass a mobile Nvidia GPU through to a Windows VM. But even with these measures, some systems will still show Error 43. 

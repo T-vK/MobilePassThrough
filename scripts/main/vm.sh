@@ -516,7 +516,7 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
 
     echo "> Unbinding dGPU from vfio driver..."
     driver unbind "${DGPU_PCI_ADDRESS}"
-    if [ "$HOST_DGPU_DRIVER" = "nvidea" ] || [ "$HOST_DGPU_DRIVER" = "nuveau" ]; then
+    if [ "$HOST_DGPU_DRIVER" = "nvidia" ] || [ "$HOST_DGPU_DRIVER" = "nuveau" ]; then
         echo "> Turn the dGPU off using bumblebee..."
         sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
     fi
