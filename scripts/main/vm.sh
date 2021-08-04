@@ -8,15 +8,29 @@ loadConfig
 # or start the previously created Windows VM, if called like this: `./vm.sh`
 #####################################################################################################
 
-if [ "$1" = "install" ]; then
-    VM_INSTALL=true
-else
-    VM_INSTALL=false
-fi
 VM_START_MODE="qemu" # qemu or virt-install
 
+if [ "$1" = "install" ]; then
+    VM_INSTALL=true
+elif [ "$1" = "start" ]; then
+    VM_INSTALL=false
+elif [ "$1" = "remove" ]; then
+    if [ $VM_START_MODE = "virt-install" ]; then
+        sudo virsh destroy --domain "${VM_NAME}"
+        sudo virsh undefine --domain "${VM_NAME}" --nvram
+    #elif [ $VM_START_MODE = "qemu" ]; then
+    #    
+    fi
+    if [[ ${DRIVE_IMG} == *.img ]]; then
+        sudo rm -f "${DRIVE_IMG}"
+    fi
+    rm -f "${OVMF_VARS_VM}"
+else
+    echo "> Error: No valid vm.sh parameter was found!"
+    exit 1
+fi
+
 #source "$COMMON_UTILS_LIBS_DIR/gpu-check"
-shopt -s expand_aliases
 alias driver="sudo '$COMMON_UTILS_TOOLS_DIR/driver-util'"
 alias vgpu="sudo '$COMMON_UTILS_TOOLS_DIR/vgpu-util'"
 
@@ -373,6 +387,7 @@ if [ "$PATCH_OVMF_WITH_VROM" = true ]; then
             sudo chown "$(whoami):$(id -gn "$(whoami)")" "${PATCHED_OVMF_FILES_DIR}"
             echo "> Patching OVMF with your vBIOS ROM. This may take a few minutes!"
             sleep 5 # Ensure the user can read this first
+            sudo service docker start
             sudo docker run --rm -ti -v "${PATCHED_OVMF_FILES_DIR}/tmp-build:/build:z" -v "${DGPU_ROM_DIR}:/roms:z" -e "VROM=${DGPU_ROM_NAME}" ovmf-vbios-patch
             sudo chown "$(whoami):$(id -gn "$(whoami)")" -R "${PATCHED_OVMF_FILES_DIR}/tmp-build"
             sudo mv "${PATCHED_OVMF_FILES_DIR}/tmp-build/OVMF_CODE.fd" "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"

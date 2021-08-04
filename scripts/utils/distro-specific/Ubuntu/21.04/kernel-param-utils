@@ -50,3 +50,9 @@ function runtimeKernelHasParam() {
     cmdline="$(cat /proc/cmdline)"
     [[ $cmdline =~ ^$1.* ]] || [[ $cmdline =~ .*$1$ ]] || [[ $cmdline = *" $1 "* ]]
 }
+
+function addKernelParams() {
+    for param in $1; do
+        addKernelParam "$param"
+    fi
+}

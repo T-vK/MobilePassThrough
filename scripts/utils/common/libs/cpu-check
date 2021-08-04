@@ -1,0 +1,14 @@
+#####################################################################################################
+# This script is not meant to be executed. It should be `source`d.
+# It creates a bunch of variables telling you what kinds of CPUs the system has.
+# Use it like this: `source "./cpu-check.sh"`
+#####################################################################################################
+
+LSCPU_OUTPUT="$(sudo lscpu)"
+if echo -e "$LSCPU_OUTPUT" | grep "Model name: " | grep -qi "intel"; then
+    export HAS_INTEL_CPU=true
+fi
+
+if echo -e "$LSCPU_OUTPUT" | grep "Model name: " | grep -qi "AMD"; then
+    export HAS_AMD_CPU=true
+fi

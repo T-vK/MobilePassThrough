@@ -9,39 +9,75 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 # TODO: the service creation shouldn'T be part of setup.sh. It should be in the auto section of mbpt.sh.
 #####################################################################################################
 
-mkdir -p "${THIRDPARTY_DIR}"
-
-
-# TODO: parse requirements.json and install dependencies automatically
-# TODO: complete this list
-if ! "${COMMON_UTILS_TOOLS_DIR}/commands-available" "wget curl vim screen git crudini remmina spicy genisoimage uuid iasl docker dumpet imake g++ virt-install qemu-system-x86_64 systool"; then
-    sudo "$DISTRO_UTILS_DIR/install-dependencies"
-else
-    echo "[Skipped] Required packages already installed."
-fi
-
+source "${PROJECT_DIR}/requirements.sh"
+source "$COMMON_UTILS_LIBS_DIR/cpu-check"
+source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
-if runtimeKernelHasParam "iommu=1" && \
- runtimeKernelHasParam "amd_iommu=on" && \
- runtimeKernelHasParam "intel_iommu=on" && \
- runtimeKernelHasParam "i915.enable_gvt=1" && \
- runtimeKernelHasParam "kvm.ignore_msrs=1" && \
- runtimeKernelHasParam "rd.driver.pre=vfio-pci"; then 
-    REBOOT_REQUIRED=false
-    echo "[Skipped] Kernel parameters are already set."
-else
-    sudo "$COMMON_UTILS_SETUP_DIR/set-kernel-params"
+alias getExecPkg="'${COMMON_UTILS_TOOLS_DIR}/install-packages' --executables"
+alias getFilePkg="'${COMMON_UTILS_TOOLS_DIR}/install-packages' --files"
+
+mkdir -p "${THIRDPARTY_DIR}"
+
+getExecPkg "$ALL_EXEC_DEPS" # Find and install packages containing executables that we need
+getFilePkg "$ALL_FILE_DEPS" # Find and install packages containing specific files that we need
+
+REBOOT_REQUIRED=false
+if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_GENERAL[*]}"]; then
+    echo "> Adding general kernel params..."
+    addKernelParams "${KERNEL_PARAMS_GENERAL[*]}"
     REBOOT_REQUIRED=true
+elif
+    echo "> [Skipped] General kernel params already set on running kernel..."
+    REBOOT_REQUIRED=false
+fi
+
+#if [ $HAS_INTEL_CPU = true ]; then
+    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_CPU[*]}"]; then
+        echo "> Adding Intel CPU-specific kernel params..."
+        addKernelParams "${KERNEL_PARAMS_INTEL_CPU[*]}"
+        REBOOT_REQUIRED=true
+    elif
+        echo "> [Skipped] Intel CPU-specific kernel params already set on running kernel..."
+    fi
+#fi
+
+#if [ $HAS_AMD_CPU = true ]; then
+    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_AMD_CPU[*]}"]; then
+        echo "> Adding AMD CPU-specific kernel params..."
+        addKernelParams "${KERNEL_PARAMS_AMD_CPU[*]}"
+        REBOOT_REQUIRED=true
+    elif
+        echo "> [Skipped] AMD CPU-specific kernel params already set on running kernel..."
+    fi
+#fi
+
+#if [ $HAS_INTEL_GPU = true ]; then
+    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_GPU[*]}"]; then
+        echo "> Adding Intel GPU-specific kernel params..."
+        addKernelParams "${KERNEL_PARAMS_INTEL_GPU[*]}"
+        REBOOT_REQUIRED=true
+    elif
+        echo "> [Skipped] Intel GPU-specific kernel params already set on running kernel..."
+    fi
+#fi
+
+if [ $HAS_NVIDIA_GPU = true ]; then # TODO: Don't force Bumblebee and the proprietary Nvidia driver upon the user
+    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"]; then
+        echo "> Adding Nvidia GPU-specific kernel params..."
+        addKernelParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
+        REBOOT_REQUIRED=true
+    elif
+        echo "> [Skipped] Nvidia GPU-specific kernel params already set on running kernel..."
+    fi
 fi
 
 if [[ "$(docker images -q ovmf-vbios-patch 2> /dev/null)" == "" ]]; then
+    echo "> Image 'ovmf-vbios-patch' has already been built."
     sudo "$COMMON_UTILS_SETUP_DIR/ovmf-vbios-patch-setup"
 else
-    echo "[Skipped] Image 'ovmf-vbios-patch' has already been built."
+    echo "> [Skipped] Image 'ovmf-vbios-patch' has already been built."
 fi
-
-source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 
 if [ "$HAS_INTEL_GPU" = true ]; then
     sudo "$DISTRO_UTILS_DIR/intel-setup"
@@ -57,21 +93,24 @@ if [ "$SUPPORTS_OPTIMUS" = true ]; then
 fi
 
 if [ ! -f "${ACPI_TABLES_DIR}/fake-battery.aml" ]; then
+    echo "> Building fake ACPI SSDT battery..."
     sudo "$COMMON_UTILS_SETUP_DIR/build-fake-battery-ssdt"
 else
-    echo "[Skipped] Fake ACPI SSDT battery has already been built."
+    echo "> [Skipped] Fake ACPI SSDT battery has already been built."
 fi
 
 if [ ! -f "${THIRDPARTY_DIR}/VBiosFinder/vendor/bundle/ruby/3.0.0/bin/coderay" ]; then
+    echo "> Installing VBiosFinder..."
     sudo "$DISTRO_UTILS_DIR/vbios-finder-installer/vbiosfinder"
 else
-    echo "[Skipped] VBiosFinder is already set up."
+    echo "> [Skipped] VBiosFinder is already set up."
 fi
 
 if [ ! -f "${THIRDPARTY_DIR}/LookingGlass/looking-glass-host.exe" ] || [ ! -f "${THIRDPARTY_DIR}/LookingGlass/client/build/looking-glass-client" ]; then
+    echo "> Installing Looking Glass..."
     sudo "$DISTRO_UTILS_DIR/looking-glass-setup"
 else
-    echo "[Skipped] Looking Glass is already set up."
+    echo "> [Skipped] Looking Glass is already set up."
 fi
 
 echo "> Generating helper-iso for auto Windows Configuration / Driver installation..."

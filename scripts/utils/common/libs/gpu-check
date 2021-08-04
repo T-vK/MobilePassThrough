@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 #####################################################################################################
 # This script is not meant to be executed. It should be `source`d.
 # It creates a bunch of variables telling you what kinds of GPUs the system has.

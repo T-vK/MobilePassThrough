@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 #####################################################################################################
 # This script has to be sourced and is not meant to be executed directly!
 # How to use: Insert the following two lines without the `#` symbols below the shebang of all scripts in this project that need it:
