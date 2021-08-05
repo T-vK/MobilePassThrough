@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 #####################################################################################################
-# Determines how the system manages initramfs, kernel parameters and services
-# Usage: `./get-manager service` # supports service, initramfs, kernelparams
+# Determines how the system manages initramfs, packages, kernel parameters and services
+# Usage: `./get-manager service` # supports service, initramfs, kernelparams, package
 #####################################################################################################
 
 COMMAND="$1"
@@ -20,5 +20,11 @@ elif [ "$COMMAND" = "initramfs" ]; then
 elif [ "$COMMAND" = "kernelparams" ]; then
     if [ -f "/etc/default/grub" ] && [ -f "/etc/grub2-efi.cfg" ]; then
         echo "grub"
+    fi
+elif [ "$COMMAND" = "package" ]; then
+    if command -v dnf &> /dev/null; then
+        echo "dnf"
+    elif command -v apt-get &> /dev/null; then
+        echo "apt"
     fi
 fi

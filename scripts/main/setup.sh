@@ -13,8 +13,8 @@ source "${PROJECT_DIR}/requirements.sh"
 source "$COMMON_UTILS_LIBS_DIR/cpu-check"
 source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 
-alias getExecPkg="'${COMMON_UTILS_TOOLS_DIR}/install-packages' --executables"
-alias getFilePkg="'${COMMON_UTILS_TOOLS_DIR}/install-packages' --files"
+alias getExecPkg="'${PACKAGE_MANAGER}' --executables"
+alias getFilePkg="'${PACKAGE_MANAGER}' --files"
 alias kernelParamManager="'${KERNEL_PARAM_MANAGER}'"
 alias runtimeKernelHasParams="'${COMMON_UTILS_TOOLS_DIR}/runtime-kernel-has-params'"
 

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+loadConfig
+
+#####################################################################################################
+# Simple script to install the packages containing the given executable names or files
+# Usage: `./dnf --executables "curl git wget docker"`
+# Usage: `./dnf --files "/usr/include/{ree,ruby}/ruby.h /usr/share/virtio-win/virtio-win.iso"`
+#####################################################################################################
+
+alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
+alias getMissingFiles="${COMMON_UTILS_TOOLS_DIR}/get-missing-files"
+
+SEARCH_MODE="$1"
+WANTED_ITEMS="$2"
+
+function installPackages() {
+    SEARCH_MODE="$1"
+    WANTED_ITEMS="$2"
+    
+    sudo dnf check-update > /dev/null
+    PACKAGES_TO_INSTALL=""
+    for CURRENT_ITEM in $WANTED_ITEMS; do
+        if [ "$SEARCH_MODE" = "--executables" ]; then
+            PACKAGE_TO_INSTALL="$(sudo dnf provides {/bin,/sbin,/usr/bin/,/usr/sbin}/$CURRENT_ITEM 2> /dev/null | grep ' : ' | head -1 | cut -d'.' -f1 | rev | cut -d'-' -f 2- | rev)"
+        elif [ "$SEARCH_MODE" = "--files" ]; then
+            PACKAGE_TO_INSTALL="$(sudo dnf provides $CURRENT_ITEM 2> /dev/null | grep ' : ' | head -1 | cut -d'.' -f1 | rev | cut -d'-' -f 2- | rev)"
+        fi
+        if [ "$?" = "0" ] && [ "$PACKAGE_TO_INSTALL" != "" ]; then
+            PACKAGES_TO_INSTALL+=" $PACKAGE_TO_INSTALL"
+        else
+            STILL_MISSING_ITEMS+=" $CURRENT_ITEM"
+        fi
+    done
+    if [ "$PACKAGES_TO_INSTALL" != "" ]; then
+        sudo dnf install -y $PACKAGES_TO_INSTALL
+    fi
+}
+
+if [ "$SEARCH_MODE" = "--executables" ]; then
+    MISSING_EXECUTABLES="$(getMissingExecutables "$WANTED_ITEMS")"
+    installPackages "$SEARCH_MODE" "$MISSING_EXECUTABLES"
+    echo "Still missing: $(getMissingExecutables "$WANTED_ITEMS")"
+elif [ "$SEARCH_MODE" = "--files" ]; then
+    MISSING_FILES="$(getMissingFiles "$WANTED_ITEMS")"
+    installPackages "$SEARCH_MODE" "$MISSING_FILES"
+    echo "Still missing: $(getMissingFiles "$WANTED_ITEMS")"
+fi

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+#####################################################################################################
+# Simple script to check which executables in a given list are not installed
+# Usage: `./get-missing-executables "curl git wget docker"`
+#####################################################################################################
+
+function getMissingExecutables() {
+    EXECUTABLES_MISSING=""
+    for CURRENT_EXECUTABLE in $1; do
+        if ! command -v $CURRENT_EXECUTABLE &> /dev/null; then
+            EXECUTABLES_MISSING+=" $CURRENT_EXECUTABLE"
+        fi
+    done
+    echo "$EXECUTABLES_MISSING"
+}
+
+getMissingExecutables "$1"

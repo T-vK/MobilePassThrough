@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+#####################################################################################################
+# Simple script to check which files in a given list do not exist
+# Usage: `./get-missing-files "curl git wget docker"`
+#####################################################################################################
+
+function getMissingFiles() {
+    FILES_MISSING=""
+    for CURRENT_FILE in $1; do
+        if [ ! -f "$CURRENT_FILE" ]; then
+            FILES_MISSING+=" $CURRENT_FILE"
+        fi
+    done
+    echo "$FILES_MISSING"
+}
+
+getMissingFiles "$1"
