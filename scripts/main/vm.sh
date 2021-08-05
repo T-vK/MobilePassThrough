@@ -30,6 +30,18 @@ else
     exit 1
 fi
 
+GET_XML=false
+DRY_RUN=false
+if [ "$1" = "install" ] || [ "$1" = "start" ]; then
+    if [ "$2" = "dry-run" ]; then
+        DRY_RUN=true
+    elif [ "$2" = "get-xml" ]; then
+        GET_XML=true
+        echo "> Enforcing VM start mode 'virt-install' to generate the XML..."
+        VM_START_MODE="virt-install"
+    fi
+fi
+
 #source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 alias driver="sudo '$COMMON_UTILS_TOOLS_DIR/driver-util'"
 alias vgpu="sudo '$COMMON_UTILS_TOOLS_DIR/vgpu-util'"
@@ -403,12 +415,12 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--boot" "loader=${OVMF_CODE},loader.readonly=yes,loader.type=pflash,nvram.template=${OVMF_VARS_VM},loader_secure=no")
 fi
 
+QEMU_PARAMS+=("-usb")
 if [ -z "$USB_DEVICES" ]; then
     echo "> Not using USB passthrough..."
     USB_DEVICE_PARAMS=""
 else
     echo "> Using USB passthrough..."
-    QEMU_PARAMS+=("-usb")
     IFS=';' read -a USB_DEVICES_ARRAY <<< "${USB_DEVICES}"
     for USB_DEVICE in "${USB_DEVICES_ARRAY[@]}"; do
         QEMU_PARAMS+=("-device" "usb-host,${USB_DEVICE}")
@@ -458,44 +470,26 @@ if [ $VM_INSTALL = true ]; then
     sudo virsh undefine --domain "${VM_NAME}" --nvram &> /dev/null
 fi
 
-echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
+if [ "$DRY_RUN" = false ]; then
+    echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
+fi
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-monitor" "unix:/tmp/${VM_NAME}-monitor,server,nowait")
-    bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
 
-    echo "> Starting the spice client @${SPICE_PORT}..."
-    bash -c "sleep 2; spicy -h localhost -p ${SPICE_PORT}" &
+    if [ "$DRY_RUN" = false ]; then
+        bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
 
-    echo "> Starting the Virtual Machine using qemu..."
-    echo ""
+        echo "> Starting the spice client @localhost:${SPICE_PORT}..."
+        bash -c "sleep 2; spicy -h localhost -p ${SPICE_PORT}" &
 
-    printf "sudo qemu-system-x86_64"
-    for param in "${QEMU_PARAMS[@]}"; do
-        if [[ "${param}" == -* ]]; then 
-            printf " \\\\\n  ${param}"
-        elif [[ $param = *" "* ]]; then
-            printf " \"${param}\""
-        else
-            printf " ${param}"
-        fi
-    done
-    echo ""
-    echo ""
-    sudo qemu-system-x86_64 "${QEMU_PARAMS[@]}"
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
+        echo "> Starting the Virtual Machine using qemu..."
+    fi
 
-    echo "> Starting the Virtual Machine using virt-install..."
-
-    #VIRT_INSTALL_PARAMS+=("--debug")
-    for param in "${QEMU_PARAMS[@]}"; do
-        VIRT_INSTALL_PARAMS+=("--qemu-commandline='${param}'")
-    done
-
-    #if [ $VM_INSTALL = true ]; then
+    if [ "$DRY_RUN" = true ]; then
+        echo "> Generating qemu-system-x86_64 command (dry-run)..."
         echo ""
-        printf "sudo virt-install"
-        for param in "${VIRT_INSTALL_PARAMS[@]}"; do
+        printf "sudo qemu-system-x86_64"
+        for param in "${QEMU_PARAMS[@]}"; do
             if [[ "${param}" == -* ]]; then 
                 printf " \\\\\n  ${param}"
             elif [[ $param = *" "* ]]; then
@@ -506,11 +500,50 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
         done
         echo ""
         echo ""
-        sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
-    #else
-    #    virsh start "${VM_NAME}"
-    #fi
+    else
+        sudo qemu-system-x86_64 "${QEMU_PARAMS[@]}"
+    fi
+elif [ "$VM_START_MODE" = "virt-install" ]; then
+    if [ "$DRY_RUN" = false ]; then
+        bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
 
+        echo "> Starting the Virtual Machine using virt-install..."
+    fi
+    #VIRT_INSTALL_PARAMS+=("--debug")
+    for param in "${QEMU_PARAMS[@]}"; do
+        VIRT_INSTALL_PARAMS+=("--qemu-commandline='${param}'")
+    done
+
+    #if [ $VM_INSTALL = true ]; then
+        if [ "$DRY_RUN" = true ]; then
+            echo "> Generating virt-install command (dry-run)..."
+            echo ""
+            printf "sudo virt-install"
+            for param in "${VIRT_INSTALL_PARAMS[@]}"; do
+                if [[ "${param}" == -* ]]; then 
+                    printf " \\\\\n  ${param}"
+                elif [[ $param = *" "* ]]; then
+                    printf " \"${param}\""
+                else
+                    printf " ${param}"
+                fi
+            done
+            echo ""
+            echo ""
+        elif [ "$GET_XML" = true ]; then
+            VIRT_INSTALL_PARAMS+=("--print-xml")
+            sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
+        else
+            sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
+        fi
+    #else
+    #    if [ "$DRY_RUN" = true ]; then
+    #        echo ""
+    #        printf "sudo virt-install"
+    #    else
+    #        virsh start "${VM_NAME}"
+    #    fi
+    #fi
 fi
 
 # This gets executed when the vm exits

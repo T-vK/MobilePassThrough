@@ -6,7 +6,7 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 # This interactive script creates a custom config file (user.conf) to your liking.
 #####################################################################################################
 
-#source "$UTILS_DIR/gpu-check"
+#source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 
 interactiveCfg() {
     DEFAULT_VALUE=$(grep -Po "(?<=^$2=).*" "${PROJECT_DIR}/default.conf" | cut -d "#" -f1 | sed 's/^\s*"\(.*\)"\s*$/\1/' | xargs)
@@ -92,9 +92,3 @@ interactiveCfg "List of USB devices to pass through. (Semicolon separated, e.g. 
 # TODO: Make selecting USB devices easier
 # TODO: Auto detect PCI addresses for GPUs
 # TODO: Don't ask for Bumblebee if there is no nvidia gpu
-
-source "$USER_CONFIG_FILE"
-if [ ! -f "$INSTALL_IMG" ]; then
-    echo "'$INSTALL_IMG' does not exist and will be downloaded automatically now. If you don't want that, press Ctrl+C to cancel it."
-    "$COMMON_UTILS_TOOLS_DIR/download-windows-iso" "$INSTALL_IMG"
-fi

@@ -2,7 +2,7 @@
 
 GRUB_CFG_PATH=/etc/default/grub
 
-COMMAND="$1" # Supported comamnds: add, remove, apply
+COMMAND="$1" # Supported commands: add, remove, apply
 PARAM="$2"
 
 function addKernelParam() {

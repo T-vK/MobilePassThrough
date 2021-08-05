@@ -177,10 +177,16 @@
                     <Order>4</Order>
                     <RequiresUserInput>false</RequiresUserInput>
                     <CommandLine>cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\scripts\network-check.ps1  cmd /c powershell -executionpolicy unrestricted -file %i:\scripts\network-check.ps1"</CommandLine>
-                    <Description>Wait for a Network connection and install Chocolatey if possible</Description>
+                    <Description>Wait for a Network connection</Description>
                 </SynchronousCommand>
                 <SynchronousCommand wcm:action="add">
                     <Order>5</Order>
+                    <RequiresUserInput>false</RequiresUserInput>
+                    <CommandLine>cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\scripts\chocolatey-install.ps1  cmd /c powershell -executionpolicy unrestricted -file %i:\scripts\chocolatey-install.ps1"</CommandLine>
+                    <Description>Install Chocolatey if possible</Description>
+                </SynchronousCommand>
+                <SynchronousCommand wcm:action="add">
+                    <Order>6</Order>
                     <RequiresUserInput>false</RequiresUserInput>
                     <CommandLine>cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\scripts\gpu-check.ps1  cmd /c powershell -executionpolicy unrestricted -file %i:\scripts\gpu-check.ps1"</CommandLine>
                     <Description>Check for GPU Errors and install drivers if possible and necessary</Description>

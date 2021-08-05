@@ -12,8 +12,9 @@
 /thirdparty
 /user.conf
 /helper-iso-files/bin
-/utils/nvflash_linux
 /helper-iso-files/drivers
+/helper-iso-files/.checksum
+/utils/nvflash_linux
 /tmp
 .*.swp
 .*.swo

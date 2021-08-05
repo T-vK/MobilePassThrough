@@ -78,9 +78,9 @@ fi
 #    echo "> devcon driver tool already exist in iso folder..."
 #fi
 
-if [ ! -f "${HELPER_ISO_FILES_DIR}/scripts/chcolatey-install.ps1" ]; then
+if [ ! -f "${HELPER_ISO_FILES_DIR}/scripts/chocolatey-install.ps1" ]; then
     echo "> Downloading Chocolatey install script..."
-    wget "https://chocolatey.org/install.ps1" -O "${HELPER_ISO_FILES_DIR}/scripts/chcolatey-install.ps1"
+    wget "https://chocolatey.org/install.ps1" -O "${HELPER_ISO_FILES_DIR}/scripts/chocolatey-install.ps1"
 else
     echo "> Chocolatey install script already exist in iso folder..."
 fi

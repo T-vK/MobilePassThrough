@@ -12,19 +12,39 @@ if [ "$COMMAND" = "service" ]; then
         echo "systemd"
     elif [ -d "/etc/init.d/" ] && command -v "service" &> /dev/null; then
         echo "sysvinit"
+    else
+        exit 1
     fi
 elif [ "$COMMAND" = "initramfs" ]; then
     if [ -d "/etc/dracut.conf.d/" ]; then
         echo "dracut"
+    else
+        exit 1
     fi
 elif [ "$COMMAND" = "kernelparams" ]; then
     if [ -f "/etc/default/grub" ] && [ -f "/etc/grub2-efi.cfg" ]; then
         echo "grub"
+    else
+        exit 1
     fi
 elif [ "$COMMAND" = "package" ]; then
     if command -v dnf &> /dev/null; then
         echo "dnf"
     elif command -v apt-get &> /dev/null; then
         echo "apt"
+    else
+        exit 1
+    fi
+elif [ "$COMMAND" = "gui-terminal" ]; then
+    if command -v gnome-terminal &> /dev/null; then
+        echo "gnome-terminal"
+    elif command -v konsole &> /dev/null; then
+        echo "konsole"
+    elif command -v x-terminal-emulator &> /dev/null; then
+        echo "x-terminal-emulator"
+    elif command -v st &> /dev/null; then
+        echo "st"
+    else
+        exit 1
     fi
 fi

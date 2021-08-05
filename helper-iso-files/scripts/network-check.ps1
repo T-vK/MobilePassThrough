@@ -51,5 +51,3 @@ Set-NetConnectionProfile -Name "Network" -NetworkCategory Private
 
 Write-Host "Waiting for chocoltey.org to be reachable. Waiting up to 30 seconds..."
 wait-for-chocolatey 30
-
-cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\scripts\chcolatey-install.ps1  cmd /c powershell -executionpolicy unrestricted -file %i:\scripts\chcolatey-install.ps1"

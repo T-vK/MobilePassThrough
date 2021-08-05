@@ -1,2 +1,31 @@
 #!/usr/bin/env bash
-# TODO create temporary autostart service
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+
+COMMAND="$1"
+
+SERVICE_NAME="MobilePassthroughInitSetup"
+if [ "$COMMAND" = "create-autostart-service" ]; then
+COMMAND_TO_RUN="$1"
+EXEC_START="$(GUI_TERMINAL run-with-command "$COMMAND_TO_RUN")"
+sudo echo "[Unit]
+Description=${SERVICE_NAME}
+After=multi-user.target network.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+Environment=DISPLAY=:0
+WorkingDirectory=${PROJECT_DIR}
+ExecStart=$(sudo) -u $(loguser) ${EXEC_START}
+Restart=never
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/${SERVICE_NAME}.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable ${SERVICE_NAME}.service
+elif [ "$COMMAND" = "remove-autostart-service" ]; then
+sudo systemctl disable ${SERVICE_NAME}.service &> /dev/null
+fi

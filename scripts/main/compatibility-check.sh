@@ -11,6 +11,8 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 #LSHW_MOCK="${PROJECT_DIR}/mock-data/$MOCK_SET-lshw"
 #LSIOMMU_MOCK="${PROJECT_DIR}/mock-data/$MOCK_SET-lsiommu"
 
+source "${PROJECT_DIR}/requirements.sh"
+
 if sudo which optirun &> /dev/null && sudo optirun echo>/dev/null ; then
     USE_BUMBLEBEE=true
     OPTIRUN_PREFIX="optirun "
@@ -19,8 +21,24 @@ else
     OPTIRUN_PREFIX=""
 fi
 
+alias getExecPkg="'${PACKAGE_MANAGER}' --executables"
+alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
+alias lsiommu="sudo '${OPTIRUN_PREFIX}${COMMON_UTILS_TOOLS_DIR}/lsiommu'"
+
+MISSING_DEPS=$(getMissingExecutables "${EXEC_DEPS_COMPATIBILITY_CHECK[*]}")
+if [ "$MISSING_DEPS" != "" ]; then
+    echo "Trying to install packages providing: $MISSING_DEPS ..."
+    getExecPkg "${EXEC_DEPS_COMPATIBILITY_CHECK[*]}" # Find and install packages needed to run this check
+fi
+MISSING_DEPS=$(getMissingExecutables "${EXEC_DEPS_COMPATIBILITY_CHECK[*]}")
+if [ "$MISSING_DEPS" != "" ]; then
+    echo "ERROR: Failed to install packages providing: $MISSING_DEPS"
+    echo "Please install them manually and try again!"
+    exit
+fi
+
 if [ -z ${LSIOMMU_MOCK+x} ]; then
-    IOMMU_GROUPS=$(sudo ${OPTIRUN_PREFIX}${COMMON_UTILS_TOOLS_DIR}/lsiommu)
+    IOMMU_GROUPS=$(lsiommu)
     MOCK_MODE=false
 else
     IOMMU_GROUPS=$(cat "${LSIOMMU_MOCK}")
@@ -178,59 +196,26 @@ else
     fi
 fi
 
-
 # If the device is a laptop
 #if [ "$(sudo ${OPTIRUN_PREFIX}dmidecode --string chassis-type)" != "Desktop" ] ; then
-    DEVICE_NAME=$(sudo ${OPTIRUN_PREFIX}dmidecode -s system-product-name)
-    BIOS_VERSION=$(sudo ${OPTIRUN_PREFIX}dmidecode -s bios-version)
-    LOG_DIR="${LOG_BASE_DIR}/$DEVICE_NAME/$BIOS_VERSION"
-    DATE=`date +%Y-%m-%d`
-    mkdir -p "${LOG_DIR}"
-
-    log_white "[Info] Device name: $DEVICE_NAME"
-    log_white "[Info] BIOS version: $BIOS_VERSION"
-
     if [ $(echo $IOMMU_GROUPS | grep " VGA compatible controller " | wc -l) = "2" ]  && ! echo $IOMMU_GROUPS | grep --quiet " Display controller " ; then
         log_white "[Info] This system is probably MUXed. (The connection between the GPU(s) and the [internal display]/[display outputs] is multiplexed.)"
     else
         log_white "[Info] This system is probably MUX-less. (The connection between the GPU(s) and the [internal display]/[display outputs] is not multiplexed.)"
     fi
-
-
-
-    echo ${DATE} > "${LOG_DIR}/date.log"
-    echo "${IOMMU_GROUPS}" > "${LOG_DIR}/lsiommu.log"
-    sudo ${OPTIRUN_PREFIX}dmidecode > "${LOG_DIR}/dmidecode.log"
-    sudo ${OPTIRUN_PREFIX}dmesg > "${LOG_DIR}/dmesg.log"
-    sudo ${OPTIRUN_PREFIX}lshw > "${LOG_DIR}/lshw.log"
-    sudo ${OPTIRUN_PREFIX}lshw -short > "${LOG_DIR}/lshw-short.log"
-    sudo ${OPTIRUN_PREFIX}lshw -class display -businfo > "${LOG_DIR}/lshw-gpu-businfo.log"
-    sudo ${OPTIRUN_PREFIX}lspci > "${LOG_DIR}/lspci.log"
-    sudo ${OPTIRUN_PREFIX}lsusb > "${LOG_DIR}/lsusb.log"
-    sudo ${OPTIRUN_PREFIX}lsblk > "${LOG_DIR}/lsblk.log"
-    sudo ${OPTIRUN_PREFIX}lscpu > "${LOG_DIR}/lscpu.log"
-    sudo ${OPTIRUN_PREFIX}dmidecode -t bios > "${LOG_DIR}/bios.log"
-    sudo ${OPTIRUN_PREFIX}cat /proc/cpuinfo > "${LOG_DIR}/cpuinfo.log"
-    sudo ${OPTIRUN_PREFIX}cat /proc/meminfo > "${LOG_DIR}/meminfo.log"
-    log_green "[OK] Logs have been created in ${LOG_DIR}"
-    echo -e ${LOG_OUTPUT} > "${LOG_DIR}/general.log"
 #fi
+
+if [ "$MOCK_MODE" = true ]; then
+    log_red "[Warning] Remember, the above output has been generated using the given mock data and has nothing to do with this system!"
+fi
 
 if [ "${UEFI_VIRTUALIZATION_ENABLED}" = true ] && [ "${UEFI_IOMMU_ENABLED}" = true ]  && [ "${KERNEL_IOMMU_ENABLED}" = true ] && [ "${IOMMU_COMPATIBILITY_LVL}" -gt "0" ] ; then
     log_green "If you found a notebook that appears to be GPU passthrough compatible, please open an issue on Github and let me know."
     if [ "${IOMMU_COMPATIBILITY_LVL}" -gt "1" ] ; then
-        log_green "You may now proceed and run './mbpt.sh configure' as mentioned in the README."
+        log_green "You may now proceed and run './mbpt.sh configure' if you haven't already."
+    else
+        exit 1
     fi
-fi
-
-
-#echo "Listing IOMMU Groups..."
-#${COMMON_UTILS_TOOLS_DIR}/lsiommu
-
-#echo "Listing GPU info with lshw..."
-#sudo lshw -class display
-
-#if [ -n ${MOCK_SET+x} ]; then
-if [ "$MOCK_MODE" = true ]; then
-    log_red "[Warning] Remember, the above output has been generated using the given mock data and has nothing to do with this system!"
+else
+    exit 1
 fi

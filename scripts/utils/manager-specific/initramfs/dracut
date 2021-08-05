@@ -2,7 +2,7 @@
 
 VFIO_CFG_PATH=/etc/dracut.conf.d/vfio.conf
 
-COMMAND="$1" # Supported comamnds: add-driver, apply
+COMMAND="$1" # Supported commands: add-driver, apply
 PARAM="$2"
 
 function addInitramfsDriver() {

@@ -19,11 +19,16 @@ function printHelp() {
     echo '  -h, --help       Print usage'
     echo ''
     echo 'Commands:'
-    echo '    setup        Install required dependencies and set required kernel parameters'
-    echo '    check        Check if and to what degree your notebook is capable of running a GPU passthrough setup'
+    echo '    auto         Automatically run check, setup and install'
     echo '    configure    Interactively guides you through the creation of your config file'
-    echo '    iso          Generate a helper iso file that contains required drivers and a helper-script for your Windows VM'
-    echo '    start        Start your VM'
+    echo '    check        Check if and to what degree your notebook is capable of running a GPU passthrough setup'
+    echo '    setup        Install required dependencies and set required kernel parameters'
+    echo '    install      Create and install the VM'
+    echo '    start        Start the VM'
+    # TODO: Split start/install in pre-start, start/install, post-start ()
+    # TODO implement:
+    #echo '    get-xml      Print out the VM configuration as XML'
+    #echo '    get-qemu     Print out the VM configuration as a qemu-system-x86_64 command'
     echo '    vbios        Dump the vBIOS ROM from the running system or extract it from a BIOS update'
     echo ''
     echo 'Examples:'
@@ -39,8 +44,23 @@ function printHelp() {
     echo '    # Generate a helper iso file that contains required drivers and a helper-script for your Windows VM'
     echo '    mbpt.sh iso'
     echo ''
-    echo '    # Start your VM'
+    echo '    # Create the VM and install Windows in it (Will overwrite an older instance if one exists!)'
+    echo '    mbpt.sh install'
+    echo ''
+    echo '    # Start the VM'
     echo '    mbpt.sh start'
+    echo ''
+    echo '    # Print the qemu command that would have been used to start the VM'
+    echo '    mbpt.sh start dry-run'
+    echo ''
+    echo '    # Print the qemu command that would have been used to install the VM'
+    echo '    mbpt.sh install dry-run'
+    echo ''
+    echo '    # Print the libvirt XML that would have been used to start the VM'
+    echo '    mbpt.sh start get-xml'
+    echo ''
+    echo '    # Print the libvirt XML that would have been used to install the VM'
+    echo '    mbpt.sh install get-xml'
     echo ''
     echo '    # Dump the vBIOS ROM of the GPU with the PCI address 01:00.0 to ./my-vbios.rom (This will most likely fail)'
     echo '    mbpt.sh vbios dump 01:00.0 ./my-vbios.rom'
@@ -61,14 +81,15 @@ elif [ "$COMMAND" = "configure" ]; then
 elif [ "$COMMAND" = "iso" ]; then
     "${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh"
 elif [ "$COMMAND" = "install" ] || [ "$COMMAND" = "create" ]; then
-    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install $2
 elif [ "$COMMAND" = "remove" ]; then
-    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" remove # TODO: implement this
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" remove
 elif [ "$COMMAND" = "start" ]; then
-    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" start
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" start $2
 elif [ "$COMMAND" = "auto" ]; then
-    sudo "${MAIN_SCRIPTS_DIR}/setup.sh"
-    sudo "${MAIN_SCRIPTS_DIR}/iommu-check.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh" || echo "Exiting..." && exit 1
+    sudo "${MAIN_SCRIPTS_DIR}/setup.sh" || echo "Exiting..." && exit 1
+    sudo "${MAIN_SCRIPTS_DIR}/iommu-check.sh" || echo "Exiting..." && exit 1
     sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install
 elif [ "$COMMAND" = "vbios" ]; then
     if [ "$2" == "extract" ]; then

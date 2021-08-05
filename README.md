@@ -202,15 +202,12 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 ## TODO
 
 ### High prio
-- Install guest tools
+- Test service auto reboot
+- Test on Ubuntu
 - Fix automatic Nvidia driver installation in the VM (fix chocolatey)
-- Add vm remove option to vm.sh
-- Finish the requirements.json
-- Automatically find and install dependencies by parsing the requirements.json
-- Fix static IP
 - Fix RDP
 - Fix Samba sharing
-- Generate libvirt XML
+- Add virt-install version check because 2.2.1 doesn't seem to support the --xml flag
 
 ### Low prio
 - Add nuveau driver compatibility
@@ -218,7 +215,7 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 - More detailed output about how the device is muxed
 - Create a bootable live version of this project
 - Create packages (deb, rpm, etc)
-- Add compatibility for Arch, Debian, etc...
+- Add compatibility for Arch, Debian, Pop OS etc...
 - Make this project work better on systems that already have a non-default GPU driver installed
 - Make it easy to uninstall the dependencies and undo the changes to the systm config (like kernel parameters)
 - Find a way to circumvent Error 43 for AMD GPUs like the `Radeon RX Vega M GL`
@@ -228,3 +225,4 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 - Check if required dependencies are installed for each script
 - Add support for multiple VMs
 - Add support for Linux guests
+- Add support for Desktop PCs

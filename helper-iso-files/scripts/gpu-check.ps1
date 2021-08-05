@@ -1,12 +1,12 @@
 Add-Type -AssemblyName PresentationFramework
 
-try {
-    choco
-}
-catch {
-    Remove-Item C:\ProgramData\chocolatey -Recurse
-    [System.Windows.MessageBox]::Show('Chocolatey installation failed! Make sure the VM has Internet access.', "MobilePassThrough - Error")
-}
+#try {
+#    choco
+#}
+#catch {
+#    Remove-Item C:\ProgramData\chocolatey -Recurse
+#    [System.Windows.MessageBox]::Show('Chocolatey installation failed! Make sure the VM has Internet access.', "MobilePassThrough - Error")
+#}
 
 #For formatting:
      $result = @{Expression = {$_.Name}; Label = "Device Name"},
@@ -23,19 +23,24 @@ if ($driverlessGpus -like '*VEN_1002*') {
 if ($driverlessGpus -like '*VEN_10DE*') {
     Write-Host 'Nvidia GPU driver missing'
     try {
-        choco install nvidia-display-driver
+        #choco install nvidia-display-driver
+        Write-Host 'Automatic GPU driver installation not implemented yet. Please install the Nvidia Display driver manually!'
+        [System.Windows.MessageBox]::Show('Automatic GPU driver installation not implemented yet. Please install the Nvidia Display driver manually!', "MobilePassThrough - Missing GPU driver")
     }
     catch {
-        [System.Windows.MessageBox]::Show('Failed to automatically install Nvidia Display driver using chocolatey!', "MobilePassThrough - Driver installation failed")
+        [System.Windows.MessageBox]::Show('Failed to automatically install Nvidia Display driver using chocolatey!', "MobilePassThrough - driver installation failed")
     }
 }
 if ($driverlessGpus -like '*VEN_8086*') {
     Write-Host 'Intel GPU driver missing'
     try {
-        choco install intel-graphics-driver
+        #choco install intel-graphics-driver
+        Write-Host 'Automatic GPU driver installation not implemented yet. Please install the Intel Graphics driver manually!'
+        [System.Windows.MessageBox]::Show('Automatic GPU driver installation not implemented yet. Please install the Intel Graphics driver manually!', "MobilePassThrough - Missing GPU driver")
+ 
     }
     catch {
-        [System.Windows.MessageBox]::Show('Failed to automatically install Intel Graphics driver using chocolatey!', "MobilePassThrough - Driver installation failed")
+        [System.Windows.MessageBox]::Show('Failed to automatically install Intel Graphics driver using chocolatey!', "MobilePassThrough - driver installation failed")
     }
 }
 

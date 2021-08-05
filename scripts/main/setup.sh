@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
 source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+loadConfig
 
 #####################################################################################################
 # This script installs all missing and required dependencies and also adds required kernel parameters. It's called like this: `./setup.sh`
@@ -13,17 +14,54 @@ source "${PROJECT_DIR}/requirements.sh"
 source "$COMMON_UTILS_LIBS_DIR/cpu-check"
 source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 
+alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
+alias getMissingFiles="${COMMON_UTILS_TOOLS_DIR}/get-missing-files"
 alias getExecPkg="'${PACKAGE_MANAGER}' --executables"
 alias getFilePkg="'${PACKAGE_MANAGER}' --files"
-alias kernelParamManager="'${KERNEL_PARAM_MANAGER}'"
-alias runtimeKernelHasParams="'${COMMON_UTILS_TOOLS_DIR}/runtime-kernel-has-params'"
+alias kernelParamManager="${KERNEL_PARAM_MANAGER}"
+alias runtimeKernelHasParams="${COMMON_UTILS_TOOLS_DIR}/runtime-kernel-has-params"
+alias ovmfVbiosPatchSetup="sudo '$COMMON_UTILS_SETUP_DIR/ovmf-vbios-patch-setup'"
+alias buildFakeBatterySsdt="sudo '$COMMON_UTILS_SETUP_DIR/build-fake-battery-ssdt'"
+alias vbiosFinderSetup="sudo '$COMMON_UTILS_SETUP_DIR/vbios-finder-setup'"
+alias lookingGlassSetup="sudo '$COMMON_UTILS_SETUP_DIR/looking-glass-setup'"
+alias generateHelperIso="sudo '${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh'"
+alias nvidiaSetup="sudo '$DISTRO_UTILS_DIR/nvidia-setup'"
+alias bumblebeeSetup="sudo '$DISTRO_UTILS_DIR/bumblebee-setup'"
+alias downloadWindowsIso="$COMMON_UTILS_TOOLS_DIR/download-windows-iso"
+alias createAutoStartService="'${SERVICE_MANAGER}' create-autostart-service"
+alias removeAutoStartService="'${SERVICE_MANAGER}' remove-autostart-service"
 
 mkdir -p "${THIRDPARTY_DIR}"
 
-echo "> Find and install packages containing executables that we need..."
-getExecPkg "$ALL_EXEC_DEPS" # Find and install packages containing executables that we need
-echo "> Find and install packages containing files that we need..."
-getFilePkg "$ALL_FILE_DEPS" # Find and install packages containing specific files that we need
+MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
+if [ "$MISSING_EXECUTABLES" != "" ]; then
+    echo "> Find and install packages containing executables that we need..."
+    getExecPkg "$ALL_EXEC_DEPS" # Find and install packages containing executables that we need
+    MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
+    if [ "$MISSING_EXECUTABLES" != "" ]; then
+        echo "> ERROR: Failed to install packages providing the following executables automatically: $MISSING_EXECUTABLES"
+    fi
+else
+    echo "> [Skipped] Executable dependencies are already installed."
+fi
+
+MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
+if [ "$MISSING_FILES" != "" ]; then
+    echo "> Find and install packages containing files that we need..."
+    getFilePkg "$ALL_FILE_DEPS" # Find and install packages containing specific files that we need
+    MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
+    if [ "$MISSING_FILES" != "" ]; then
+        MISSING_FILES="$(echo "$MISSING_EXECUTABLES" | sed 's/\s\+/\n/g')" # replace spaces with new lines
+        echo "> ERROR: Failed to install packages providing the following executables automatically:"
+        echo "$MISSING_FILES"
+    fi
+else
+    echo "> [Skipped] File dependencies are already installed."
+fi
+
+if [ "$MISSING_EXECUTABLES" != "" ] || [ "$MISSING_FILES" != "" ]; then
+    exit 1
+fi
 
 REBOOT_REQUIRED=false
 if ! runtimeKernelHasParams "${KERNEL_PARAMS_GENERAL[*]}"; then
@@ -31,7 +69,7 @@ if ! runtimeKernelHasParams "${KERNEL_PARAMS_GENERAL[*]}"; then
     kernelParamManager add "${KERNEL_PARAMS_GENERAL[*]}"
     REBOOT_REQUIRED=true
 else
-    echo "> [Skipped] General kernel params already set on running kernel..."
+    echo "> [Skipped] General kernel params already set on running kernel."
     REBOOT_REQUIRED=false
 fi
 
@@ -41,7 +79,7 @@ fi
         kernelParamManager add "${KERNEL_PARAMS_INTEL_CPU[*]}"
         REBOOT_REQUIRED=true
     else
-        echo "> [Skipped] Intel CPU-specific kernel params already set on running kernel..."
+        echo "> [Skipped] Intel CPU-specific kernel params already set on running kernel."
     fi
 #fi
 
@@ -51,7 +89,7 @@ fi
         kernelParamManager add "${KERNEL_PARAMS_AMD_CPU[*]}"
         REBOOT_REQUIRED=true
     else
-        echo "> [Skipped] AMD CPU-specific kernel params already set on running kernel..."
+        echo "> [Skipped] AMD CPU-specific kernel params already set on running kernel."
     fi
 #fi
 
@@ -61,7 +99,7 @@ fi
         kernelParamManager add "${KERNEL_PARAMS_INTEL_GPU[*]}"
         REBOOT_REQUIRED=true
     else
-        echo "> [Skipped] Intel GPU-specific kernel params already set on running kernel..."
+        echo "> [Skipped] Intel GPU-specific kernel params already set on running kernel."
     fi
 #fi
 
@@ -71,83 +109,75 @@ if [ "$HAS_NVIDIA_GPU" = true ]; then # TODO: Don't force Bumblebee and the prop
         kernelParamManager add "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
         REBOOT_REQUIRED=true
     else
-        echo "> [Skipped] Nvidia GPU-specific kernel params already set on running kernel..."
+        echo "> [Skipped] Nvidia GPU-specific kernel params already set on running kernel."
     fi
 fi
 
 if [[ "$(docker images -q ovmf-vbios-patch 2> /dev/null)" == "" ]]; then
     echo "> Image 'ovmf-vbios-patch' has already been built."
-    sudo "$COMMON_UTILS_SETUP_DIR/ovmf-vbios-patch-setup"
+    ovmfVbiosPatchSetup
 else
     echo "> [Skipped] Image 'ovmf-vbios-patch' has already been built."
 fi
 
 if [ "$HAS_NVIDIA_GPU" = true ]; then
-    sudo "$DISTRO_UTILS_DIR/nvidia-setup"
+    nvidiaSetup
 fi
 if [ "$SUPPORTS_OPTIMUS" = true ]; then
-    sudo "$DISTRO_UTILS_DIR/bumblebee-setup"
+    bumblebeeSetup
 fi
 
 if [ ! -f "${ACPI_TABLES_DIR}/fake-battery.aml" ]; then
     echo "> Building fake ACPI SSDT battery..."
-    sudo "$COMMON_UTILS_SETUP_DIR/build-fake-battery-ssdt"
+    buildFakeBatterySsdt
 else
     echo "> [Skipped] Fake ACPI SSDT battery has already been built."
 fi
 
-if [ ! -f "${THIRDPARTY_DIR}/VBiosFinder/vendor/bundle/ruby/3.0.0/bin/coderay" ]; then
+if [ ! -f ${THIRDPARTY_DIR}/VBiosFinder/vendor/bundle/ruby/*/bin/coderay ]; then
     echo "> Installing VBiosFinder..."
-    sudo "$COMMON_UTILS_SETUP_DIR/vbios-finder-setup"
+    vbiosFinderSetup
 else
     echo "> [Skipped] VBiosFinder is already set up."
 fi
 
 if [ ! -f "${THIRDPARTY_DIR}/LookingGlass/looking-glass-host.exe" ] || [ ! -f "${THIRDPARTY_DIR}/LookingGlass/client/build/looking-glass-client" ]; then
     echo "> Installing Looking Glass..."
-    sudo "$COMMON_UTILS_SETUP_DIR/looking-glass-setup"
+    lookingGlassSetup
 else
     echo "> [Skipped] Looking Glass is already set up."
 fi
 
-#if [ ! -f "${THIRDPARTY_DIR}/virtio-win.iso" ]; then
-#    echo "> Downlaoding virtio drivers..."
-#    sudo "$COMMON_UTILS_SETUP_DIR/download-vfio-drivers"
-#else
-#    echo "> [Skipped] virtio drivers already downloaded."
-#fi
+CHECKSUM_FILE_PATH="$HELPER_ISO_FILES_DIR/.checksum"
+PREVIOUS_HELPER_ISO_DIR_CHECKSUM="$(cat "$CHECKSUM_FILE_PATH" 2> /dev/null)"
+NEW_HELPER_ISO_DIR_CHECKSUM="$(find "$HELPER_ISO_FILES_DIR" -type f ! -iname ".checksum" -exec md5sum {} + | LC_ALL=C sort | md5sum | cut -d' ' -f1)"
+if [ "$PREVIOUS_HELPER_ISO_DIR_CHECKSUM" != "$NEW_HELPER_ISO_DIR_CHECKSUM" ]; then
+    echo "> Generating helper ISO for auto unattended Windows install, config and driver installation..."
+    rm -f "$CHECKSUM_FILE_PATH"
+    generateHelperIso
+    echo "$NEW_HELPER_ISO_DIR_CHECKSUM" > "$CHECKSUM_FILE_PATH"
+else
+    echo "> [Skipped] Helper ISO for auto unattended Windows install, config and driver installation already generated for the current files."
+fi
 
-echo "> Generating helper-iso for auto Windows Configuration / Driver installation..."
-sudo ${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh
-# TODO: add check if files have changed and helper iso needs to be regenerated; maybe by using a checksum?
+if [ ! -f "$INSTALL_IMG" ]; then
+    echo "Downloading Windows ISO from Microsoft now."
+    downloadWindowsIso "$INSTALL_IMG"
+else
+    echo "> [Skipped] Windows ISO has already been downloaded."
+fi
 
 if [ "$1" = "auto" ]; then
     if [ "$REBOOT_REQUIRED" = true ]; then
         echo "> Creating a temporary service that will run on next reboot and create the Windows VM"
         echo "exit because this has not been tested yet"
         exit # TODO: TEST THIS
-        sudo echo "[Unit]
-Description=MobilePassthroughInitSetup
-After=multi-user.target network.target
-
-[Service]
-User=root
-Group=root
-Type=simple
-Environment=DISPLAY=:0
-WorkingDirectory=${PROJECT_DIR}
-ExecStart=$(sudo) -u $(loguser) $(which gnome-terminal) -- bash -c \"${PROJECT_DIR}/mbpt.sh auto\"
-Restart=never
-
-[Install]
-WantedBy=multi-user.target" > /etc/systemd/system/MobilePassthroughInitSetup.service
-        sudo systemctl daemon-reload
-        sudo systemctl enable MobilePassthroughInitSetup.service
+        createAutoStartService ""
         echo "> Rebooting in 15 seconds... Press Ctrl+C to reboot now."
         sleep 15
-        sudo systemctl --force reboot
+        sudo shutdown -r 0
     else
-        sudo systemctl disable MobilePassthroughInitSetup.service &> /dev/null
+        removeAutoStartService &> /dev/null
         echo "> No reboot required."
     fi
 else
