@@ -12,16 +12,19 @@ loadConfig
 alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
 alias getMissingFiles="${COMMON_UTILS_TOOLS_DIR}/get-missing-files"
 
-SEARCH_MODE="$1"
-WANTED_ITEMS="$2"
+COMMAND="$1"
+SEARCH_MODE="$2"
+WANTED_ITEMS="$3"
+
+function updatePackageInfo() {
+    sudo apt-get update
+}
 
 function installPackages() {
     SEARCH_MODE="$1"
     WANTED_ITEMS="$2"
-    
-    sudo apt-get update > /dev/null
     if ! command -v apt-file &> /dev/null; then
-        apt-get install -y apt-file
+        sudo apt-get install -y apt-file
     fi
     PACKAGES_TO_INSTALL=""
     for CURRENT_ITEM in $WANTED_ITEMS; do

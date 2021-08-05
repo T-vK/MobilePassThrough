@@ -6,26 +6,27 @@ COMMAND="$1"
 
 SERVICE_NAME="MobilePassthroughInitSetup"
 if [ "$COMMAND" = "create-autostart-service" ]; then
-COMMAND_TO_RUN="$1"
-EXEC_START="$(GUI_TERMINAL run-with-command "$COMMAND_TO_RUN")"
-sudo echo "[Unit]
+    COMMAND_TO_RUN="$2"
+    EXEC_START="'$GUI_TERMINAL' run-with-command '$COMMAND_TO_RUN'"
+    
+    sudo echo "[Unit]
 Description=${SERVICE_NAME}
 After=multi-user.target network.target
 
 [Service]
-User=root
-Group=root
+User=$(logname)
+Group=$(id -gn $(logname))
 Type=simple
 Environment=DISPLAY=:0
 WorkingDirectory=${PROJECT_DIR}
-ExecStart=$(sudo) -u $(loguser) ${EXEC_START}
+ExecStart=${EXEC_START}
 Restart=never
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/${SERVICE_NAME}.service
 
-sudo systemctl daemon-reload
-sudo systemctl enable ${SERVICE_NAME}.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable ${SERVICE_NAME}.service
 elif [ "$COMMAND" = "remove-autostart-service" ]; then
-sudo systemctl disable ${SERVICE_NAME}.service &> /dev/null
+    sudo systemctl disable ${SERVICE_NAME}.service &> /dev/null
 fi

@@ -12,14 +12,18 @@ loadConfig
 alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
 alias getMissingFiles="${COMMON_UTILS_TOOLS_DIR}/get-missing-files"
 
-SEARCH_MODE="$1"
-WANTED_ITEMS="$2"
+COMMAND="$1"
+SEARCH_MODE="$2"
+WANTED_ITEMS="$3"
+
+function updatePackageInfo() {
+    sudo dnf check-update
+}
 
 function installPackages() {
     SEARCH_MODE="$1"
     WANTED_ITEMS="$2"
     
-    sudo dnf check-update > /dev/null
     PACKAGES_TO_INSTALL=""
     for CURRENT_ITEM in $WANTED_ITEMS; do
         if [ "$SEARCH_MODE" = "--executables" ]; then
@@ -38,24 +42,29 @@ function installPackages() {
     fi
 }
 
-if [ "$SEARCH_MODE" = "--executables" ]; then
-    MISSING_EXECUTABLES="$(getMissingExecutables "$WANTED_ITEMS")"
-    installPackages "$SEARCH_MODE" "$MISSING_EXECUTABLES"
-    MISSING_EXECUTABLES="$(getMissingExecutables "$WANTED_ITEMS")"
-elif [ "$SEARCH_MODE" = "--files" ]; then
-    MISSING_FILES="$(getMissingFiles "$WANTED_ITEMS")"
-    installPackages "$SEARCH_MODE" "$MISSING_FILES"
-    MISSING_FILES="$(getMissingFiles "$WANTED_ITEMS")"
-else
-    echo "ERROR: Invalid mode or no mode at all was speficied!"
-    exit 1
+if [ "$COMMAND" = "install" ]; then
+    if [ "$SEARCH_MODE" = "--executables" ]; then
+        MISSING_EXECUTABLES="$(getMissingExecutables "$WANTED_ITEMS")"
+        installPackages "$SEARCH_MODE" "$MISSING_EXECUTABLES"
+        MISSING_EXECUTABLES="$(getMissingExecutables "$WANTED_ITEMS")"
+    elif [ "$SEARCH_MODE" = "--files" ]; then
+        MISSING_FILES="$(getMissingFiles "$WANTED_ITEMS")"
+        installPackages "$SEARCH_MODE" "$MISSING_FILES"
+        MISSING_FILES="$(getMissingFiles "$WANTED_ITEMS")"
+    else
+        echo "ERROR: Invalid mode or no mode at all was speficied!"
+        exit 1
+    fi
+    if [ "$MISSING_EXECUTABLES" != "" ]; then
+        echo "ERROR: Still missing package providing the following executables: $MISSING_EXECUTABLES"
+    fi
+    if [ "$MISSING_FILES" != "" ]; then
+        echo "ERROR: Still missing package providing the following files: $MISSING_FILES"
+    fi
+    if [ "$MISSING_EXECUTABLES" != "" ] && [ "$MISSING_FILES" != "" ]; then
+        exit 1
+    fi
+elif [ "$COMMAND" = "update" ]; then
+    updatePackageInfo
 fi
-if [ "$MISSING_EXECUTABLES" != "" ]; then
-    echo "ERROR: Still missing package providing the following executables: $MISSING_EXECUTABLES"
-fi
-if [ "$MISSING_FILES" != "" ]; then
-    echo "ERROR: Still missing package providing the following files: $MISSING_FILES"
-fi
-if [ "$MISSING_EXECUTABLES" != "" ] && [ "$MISSING_FILES" != "" ]; then
-    exit 1
-fi
+

@@ -3,7 +3,8 @@ while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f
 source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 
 COMMAND="$1"
+COMMAND_TO_EXECUTE="$2"
 
 if [ "$COMMAND" = "run-with-command" ]; then
-    x-terminal-emulator -e \"$1\"
+    x-terminal-emulator -e "$COMMAND_TO_EXECUTE"
 fi

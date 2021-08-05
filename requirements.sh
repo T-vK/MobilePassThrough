@@ -37,7 +37,6 @@ EXEC_DEPS_VBIOS_FINDER=("git" "wget" "curl" "unzip" "ruby" "gem" "bundle" "7za" 
 FILE_DEPS_VBIOS_FINDER=("/usr/include/rub*/ruby.h") # ruby-devel
 EXEC_DEPS_VIRTUALIZATION=("qemu-system-x86_64" "virsh" "virt-viewer" "spicy") # qemu-system-x86-core libvirt-client virt-viewer spice-gtk-tools
 FILE_DEPS_VIRTUALIZATION=("/usr/share/OVMF/OVMF_CODE.fd" "/usr/share/OVMF/OVMF_VARS.fd") # edk2-ovmf 
-FILE_DEPS_VIRTUALIZATION=("/usr/share/virtio-win/virtio-win.iso") # virtio-win # TODO: get the iso using wget cuz only rhel distros have a package for that anyways
 EXEC_DEPS_RDP=("remmina") # remmina
 EXEC_DEPS_SAMBA=("samba") # samba
 EXEC_DEPS_IGPU_PASSTHROUGH=("uuid" "intel-virtual-output") # uuid xorg-x11-drv-intel

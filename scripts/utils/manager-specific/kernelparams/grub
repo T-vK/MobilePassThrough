@@ -16,7 +16,7 @@ function addKernelParam() {
 function addKernelParams() {
     for param in $1; do
         addKernelParam "$param"
-    fi
+    done
 }
 function removeKernelParam() {
     if sudo cat "$GRUB_CFG_PATH" | grep "GRUB_CMDLINE_LINUX=" | grep --quiet "$1"; then
@@ -29,7 +29,7 @@ function removeKernelParam() {
 function removeKernelParams() {
     for param in $1; do
         removeKernelParam "$param"
-    fi
+    done
 }
 
 function applyKernelParamChanges() {

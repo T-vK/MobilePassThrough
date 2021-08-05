@@ -16,9 +16,10 @@ source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 
 alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
 alias getMissingFiles="${COMMON_UTILS_TOOLS_DIR}/get-missing-files"
-alias getExecPkg="'${PACKAGE_MANAGER}' --executables"
-alias getFilePkg="'${PACKAGE_MANAGER}' --files"
-alias kernelParamManager="${KERNEL_PARAM_MANAGER}"
+alias updatePkgInfo="'${PACKAGE_MANAGER}' update"
+alias getExecPkg="'${PACKAGE_MANAGER}' install --executables"
+alias getFilePkg="'${PACKAGE_MANAGER}' install --files"
+alias addKernelParams="sudo '${KERNEL_PARAM_MANAGER}' add"
 alias runtimeKernelHasParams="${COMMON_UTILS_TOOLS_DIR}/runtime-kernel-has-params"
 alias ovmfVbiosPatchSetup="sudo '$COMMON_UTILS_SETUP_DIR/ovmf-vbios-patch-setup'"
 alias buildFakeBatterySsdt="sudo '$COMMON_UTILS_SETUP_DIR/build-fake-battery-ssdt'"
@@ -35,6 +36,8 @@ mkdir -p "${THIRDPARTY_DIR}"
 
 MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
 if [ "$MISSING_EXECUTABLES" != "" ]; then
+    echo "> Update package info..."
+    updatePkgInfo
     echo "> Find and install packages containing executables that we need..."
     getExecPkg "$ALL_EXEC_DEPS" # Find and install packages containing executables that we need
     MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
@@ -47,6 +50,8 @@ fi
 
 MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
 if [ "$MISSING_FILES" != "" ]; then
+    echo "> Update package info..."
+    updatePkgInfo
     echo "> Find and install packages containing files that we need..."
     getFilePkg "$ALL_FILE_DEPS" # Find and install packages containing specific files that we need
     MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
@@ -66,17 +71,16 @@ fi
 REBOOT_REQUIRED=false
 if ! runtimeKernelHasParams "${KERNEL_PARAMS_GENERAL[*]}"; then
     echo "> Adding general kernel params..."
-    kernelParamManager add "${KERNEL_PARAMS_GENERAL[*]}"
+    addKernelParams "${KERNEL_PARAMS_GENERAL[*]}"
     REBOOT_REQUIRED=true
 else
     echo "> [Skipped] General kernel params already set on running kernel."
-    REBOOT_REQUIRED=false
 fi
 
 #if [ "$HAS_INTEL_CPU" = true ]; then
     if ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_CPU[*]}"; then
         echo "> Adding Intel CPU-specific kernel params..."
-        kernelParamManager add "${KERNEL_PARAMS_INTEL_CPU[*]}"
+        addKernelParams "${KERNEL_PARAMS_INTEL_CPU[*]}"
         REBOOT_REQUIRED=true
     else
         echo "> [Skipped] Intel CPU-specific kernel params already set on running kernel."
@@ -86,7 +90,7 @@ fi
 #if [ "$HAS_AMD_CPU" = true ]; then
     if ! runtimeKernelHasParams "${KERNEL_PARAMS_AMD_CPU[*]}"; then
         echo "> Adding AMD CPU-specific kernel params..."
-        kernelParamManager add "${KERNEL_PARAMS_AMD_CPU[*]}"
+        addKernelParams "${KERNEL_PARAMS_AMD_CPU[*]}"
         REBOOT_REQUIRED=true
     else
         echo "> [Skipped] AMD CPU-specific kernel params already set on running kernel."
@@ -96,7 +100,7 @@ fi
 #if [ "$HAS_INTEL_GPU" = true ]; then
     if ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_GPU[*]}"; then
         echo "> Adding Intel GPU-specific kernel params..."
-        kernelParamManager add "${KERNEL_PARAMS_INTEL_GPU[*]}"
+        addKernelParams "${KERNEL_PARAMS_INTEL_GPU[*]}"
         REBOOT_REQUIRED=true
     else
         echo "> [Skipped] Intel GPU-specific kernel params already set on running kernel."
@@ -106,7 +110,7 @@ fi
 if [ "$HAS_NVIDIA_GPU" = true ]; then # TODO: Don't force Bumblebee and the proprietary Nvidia driver upon the user
     if ! runtimeKernelHasParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"; then
         echo "> Adding Nvidia GPU-specific kernel params..."
-        kernelParamManager add "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
+        addKernelParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
         REBOOT_REQUIRED=true
     else
         echo "> [Skipped] Nvidia GPU-specific kernel params already set on running kernel."
@@ -170,12 +174,10 @@ fi
 if [ "$1" = "auto" ]; then
     if [ "$REBOOT_REQUIRED" = true ]; then
         echo "> Creating a temporary service that will run on next reboot and create the Windows VM"
-        echo "exit because this has not been tested yet"
-        exit # TODO: TEST THIS
-        createAutoStartService ""
+        createAutoStartService "${PROJECT_DIR}/mbpt.sh auto"
         echo "> Rebooting in 15 seconds... Press Ctrl+C to reboot now."
-        sleep 15
-        sudo shutdown -r 0
+        #sleep 300
+        #sudo shutdown -r 0
     else
         removeAutoStartService &> /dev/null
         echo "> No reboot required."

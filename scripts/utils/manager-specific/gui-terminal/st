@@ -3,7 +3,8 @@ while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f
 source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 
 COMMAND="$1"
+COMMAND_TO_EXECUTE="$2"
 
 if [ "$COMMAND" = "run-with-command" ]; then
-    st -e \"$1\"
+    st -e "$COMMAND_TO_EXECUTE"
 fi
