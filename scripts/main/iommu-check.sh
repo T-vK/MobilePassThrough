@@ -33,7 +33,7 @@ else
     echo "[Error] VT-D / IOMMU is not enabled in the UEFI! This is required to check which devices are in which IOMMU group and to use GPU passthrough!"
 fi
 
-if [ $UEFI_VIRTUALIZATION_ENABLED = true ] && [ $UEFI_IOMMU_ENABLED = true ] ; then
+if [ "$UEFI_VIRTUALIZATION_ENABLED" = true ] && [ "$UEFI_IOMMU_ENABLED" = true ] ; then
     exit 0 # success
 else
     exit 1 # error

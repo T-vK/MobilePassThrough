@@ -202,6 +202,7 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 ## TODO
 
 ### High prio
+- Install guest tools
 - Fix automatic Nvidia driver installation in the VM (fix chocolatey)
 - Add vm remove option to vm.sh
 - Finish the requirements.json

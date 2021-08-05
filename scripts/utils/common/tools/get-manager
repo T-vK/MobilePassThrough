@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+#####################################################################################################
+# Determines how the system manages initramfs, kernel parameters and services
+# Usage: `./get-manager service` # supports service, initramfs, kernelparams
+#####################################################################################################
+
+COMMAND="$1"
+
+if [ "$COMMAND" = "service" ]; then
+    if command -v "systemctl" &> /dev/null; then
+        echo "systemd"
+    elif [ -d "/etc/init.d/" ] && command -v "service" &> /dev/null; then
+        echo "sysvinit"
+    fi
+elif [ "$COMMAND" = "initramfs" ]; then
+    if [ -d "/etc/dracut.conf.d/" ]; then
+        echo "dracut"
+    fi
+elif [ "$COMMAND" = "kernelparams" ]; then
+    if [ -f "/etc/default/grub" ] && [ -f "/etc/grub2-efi.cfg" ]; then
+        echo "grub"
+    fi
+fi

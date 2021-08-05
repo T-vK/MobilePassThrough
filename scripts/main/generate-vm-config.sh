@@ -63,7 +63,6 @@ interactiveCfg "Path to a folder to share with the VM via SMB. (Optional)" SMB_S
 interactiveCfg "Location of OVMF_VARS.fd." OVMF_VARS
 interactiveCfg "Where to create Creating a copy of OVMF_VARS.fd (containing the executable firmware code and but the non-volatile variable store) for the VM?" OVMF_VARS_VM
 interactiveCfg "Location of OVMF_CODE.fd." OVMF_CODE
-interactiveCfg "Location of the virtio Windows driver disk." VIRTIO_WIN_IMG
 interactiveCfg "Location of helper iso or where to create it." HELPER_ISO
 interactiveCfg "Pass the dGPU through to the VM." DGPU_PASSTHROUGH
 interactiveCfg "Share the iGPU with the VM to allow using Optimus within the VM to save battery life" SHARE_IGPU

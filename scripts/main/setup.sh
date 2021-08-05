@@ -12,62 +12,65 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 source "${PROJECT_DIR}/requirements.sh"
 source "$COMMON_UTILS_LIBS_DIR/cpu-check"
 source "$COMMON_UTILS_LIBS_DIR/gpu-check"
-source "$DISTRO_UTILS_DIR/kernel-param-utils"
 
 alias getExecPkg="'${COMMON_UTILS_TOOLS_DIR}/install-packages' --executables"
 alias getFilePkg="'${COMMON_UTILS_TOOLS_DIR}/install-packages' --files"
+alias kernelParamManager="'${KERNEL_PARAM_MANAGER}'"
+alias runtimeKernelHasParams="'${COMMON_UTILS_TOOLS_DIR}/runtime-kernel-has-params'"
 
 mkdir -p "${THIRDPARTY_DIR}"
 
+echo "> Find and install packages containing executables that we need..."
 getExecPkg "$ALL_EXEC_DEPS" # Find and install packages containing executables that we need
+echo "> Find and install packages containing files that we need..."
 getFilePkg "$ALL_FILE_DEPS" # Find and install packages containing specific files that we need
 
 REBOOT_REQUIRED=false
-if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_GENERAL[*]}"]; then
+if ! runtimeKernelHasParams "${KERNEL_PARAMS_GENERAL[*]}"; then
     echo "> Adding general kernel params..."
-    addKernelParams "${KERNEL_PARAMS_GENERAL[*]}"
+    kernelParamManager add "${KERNEL_PARAMS_GENERAL[*]}"
     REBOOT_REQUIRED=true
-elif
+else
     echo "> [Skipped] General kernel params already set on running kernel..."
     REBOOT_REQUIRED=false
 fi
 
-#if [ $HAS_INTEL_CPU = true ]; then
-    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_CPU[*]}"]; then
+#if [ "$HAS_INTEL_CPU" = true ]; then
+    if ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_CPU[*]}"; then
         echo "> Adding Intel CPU-specific kernel params..."
-        addKernelParams "${KERNEL_PARAMS_INTEL_CPU[*]}"
+        kernelParamManager add "${KERNEL_PARAMS_INTEL_CPU[*]}"
         REBOOT_REQUIRED=true
-    elif
+    else
         echo "> [Skipped] Intel CPU-specific kernel params already set on running kernel..."
     fi
 #fi
 
-#if [ $HAS_AMD_CPU = true ]; then
-    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_AMD_CPU[*]}"]; then
+#if [ "$HAS_AMD_CPU" = true ]; then
+    if ! runtimeKernelHasParams "${KERNEL_PARAMS_AMD_CPU[*]}"; then
         echo "> Adding AMD CPU-specific kernel params..."
-        addKernelParams "${KERNEL_PARAMS_AMD_CPU[*]}"
+        kernelParamManager add "${KERNEL_PARAMS_AMD_CPU[*]}"
         REBOOT_REQUIRED=true
-    elif
+    else
         echo "> [Skipped] AMD CPU-specific kernel params already set on running kernel..."
     fi
 #fi
 
-#if [ $HAS_INTEL_GPU = true ]; then
-    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_GPU[*]}"]; then
+#if [ "$HAS_INTEL_GPU" = true ]; then
+    if ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_GPU[*]}"; then
         echo "> Adding Intel GPU-specific kernel params..."
-        addKernelParams "${KERNEL_PARAMS_INTEL_GPU[*]}"
+        kernelParamManager add "${KERNEL_PARAMS_INTEL_GPU[*]}"
         REBOOT_REQUIRED=true
-    elif
+    else
         echo "> [Skipped] Intel GPU-specific kernel params already set on running kernel..."
     fi
 #fi
 
-if [ $HAS_NVIDIA_GPU = true ]; then # TODO: Don't force Bumblebee and the proprietary Nvidia driver upon the user
-    if [ ! runtimeKernelHasParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"]; then
+if [ "$HAS_NVIDIA_GPU" = true ]; then # TODO: Don't force Bumblebee and the proprietary Nvidia driver upon the user
+    if ! runtimeKernelHasParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"; then
         echo "> Adding Nvidia GPU-specific kernel params..."
-        addKernelParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
+        kernelParamManager add "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
         REBOOT_REQUIRED=true
-    elif
+    else
         echo "> [Skipped] Nvidia GPU-specific kernel params already set on running kernel..."
     fi
 fi
@@ -79,12 +82,6 @@ else
     echo "> [Skipped] Image 'ovmf-vbios-patch' has already been built."
 fi
 
-if [ "$HAS_INTEL_GPU" = true ]; then
-    sudo "$DISTRO_UTILS_DIR/intel-setup"
-fi
-if [ "$HAS_AMD_GPU" = true ]; then
-    sudo "$DISTRO_UTILS_DIR/amd-setup"
-fi
 if [ "$HAS_NVIDIA_GPU" = true ]; then
     sudo "$DISTRO_UTILS_DIR/nvidia-setup"
 fi
@@ -101,25 +98,31 @@ fi
 
 if [ ! -f "${THIRDPARTY_DIR}/VBiosFinder/vendor/bundle/ruby/3.0.0/bin/coderay" ]; then
     echo "> Installing VBiosFinder..."
-    sudo "$DISTRO_UTILS_DIR/vbios-finder-installer/vbiosfinder"
+    sudo "$COMMON_UTILS_SETUP_DIR/vbios-finder-setup"
 else
     echo "> [Skipped] VBiosFinder is already set up."
 fi
 
 if [ ! -f "${THIRDPARTY_DIR}/LookingGlass/looking-glass-host.exe" ] || [ ! -f "${THIRDPARTY_DIR}/LookingGlass/client/build/looking-glass-client" ]; then
     echo "> Installing Looking Glass..."
-    sudo "$DISTRO_UTILS_DIR/looking-glass-setup"
+    sudo "$COMMON_UTILS_SETUP_DIR/looking-glass-setup"
 else
     echo "> [Skipped] Looking Glass is already set up."
 fi
 
+#if [ ! -f "${THIRDPARTY_DIR}/virtio-win.iso" ]; then
+#    echo "> Downlaoding virtio drivers..."
+#    sudo "$COMMON_UTILS_SETUP_DIR/download-vfio-drivers"
+#else
+#    echo "> [Skipped] virtio drivers already downloaded."
+#fi
+
 echo "> Generating helper-iso for auto Windows Configuration / Driver installation..."
 sudo ${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh
-# TODO: add check if files have changed and helper iso needs to be regenerated
-
+# TODO: add check if files have changed and helper iso needs to be regenerated; maybe by using a checksum?
 
 if [ "$1" = "auto" ]; then
-    if [ REBOOT_REQUIRED = true ]; then
+    if [ "$REBOOT_REQUIRED" = true ]; then
         echo "> Creating a temporary service that will run on next reboot and create the Windows VM"
         echo "exit because this has not been tested yet"
         exit # TODO: TEST THIS

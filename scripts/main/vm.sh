@@ -99,23 +99,11 @@ if [ $VM_INSTALL = true ]; then
 fi
 
 if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-drive" "file=${VIRTIO_WIN_IMG},index=2,media=cdrom")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${VIRTIO_WIN_IMG}")
-fi
-
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-drive" "file=${HELPER_ISO},index=3,media=cdrom")
+    QEMU_PARAMS+=("-drive" "file=${HELPER_ISO},index=2,media=cdrom")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${HELPER_ISO}")
 fi
 
-#if [ "$VM_START_MODE" = "qemu" ]; then
-#    QEMU_PARAMS+=("-fdb" "${AUTOUNATTEND_WIN_VFD}")
-#elif [ "$VM_START_MODE" = "virt-install" ]; then
-#    VIRT_INSTALL_PARAMS+=("--disk" "device=floppy,path=${AUTOUNATTEND_WIN_VFD}")
-#fi
-#TODO: Uncomment!
 #QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")
 #QEMU_PARAMS+=("-device" "virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS}")
 QEMU_PARAMS+=("-device" "ich9-intel-hda")

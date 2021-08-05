@@ -65,7 +65,7 @@ elif [ "$COMMAND" = "install" ] || [ "$COMMAND" = "create" ]; then
 elif [ "$COMMAND" = "remove" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/vm.sh" remove # TODO: implement this
 elif [ "$COMMAND" = "start" ]; then
-    sudo "${MAIN_SCRIPTS_DIR}/vm.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" start
 elif [ "$COMMAND" = "auto" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/setup.sh"
     sudo "${MAIN_SCRIPTS_DIR}/iommu-check.sh"

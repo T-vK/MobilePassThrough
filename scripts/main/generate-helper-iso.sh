@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
 source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
-
+loadConfig
 #####################################################################################################
 # This script creates a helper ISO file containing scripts and drivers to fully automate the Windows installation within the VM.
 #####################################################################################################
@@ -88,5 +88,6 @@ fi
 rm -rf "${HELPER_ISO_FILES_DIR}/tmp"
 
 rm -f "${HELPER_ISO}"
+
 #echo "genisoimage -quiet -input-charset utf-8 -J -joliet-long -r -allow-lowercase -allow-multidot -o \"${HELPER_ISO}\" \"${HELPER_ISO_FILES_DIR}\""
-genisoimage -quiet -input-charset utf-8 -J -joliet-long -r -allow-lowercase -allow-multidot -o "${HELPER_ISO}" "${HELPER_ISO_FILES_DIR}"
+genisoimage -quiet -input-charset utf-8 -J -joliet-long -r -allow-lowercase -allow-multidot -o "${HELPER_ISO}" "${HELPER_ISO_FILES_DIR}" |& grep -v "Warning: "

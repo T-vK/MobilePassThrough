@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+VFIO_CFG_PATH=/etc/dracut.conf.d/vfio.conf
+
+COMMAND="$1" # Supported comamnds: add-driver, apply
+PARAM="$2"
+
+function addInitramfsDriver() {
+    driver="$1"
+    sudo touch "$VFIO_CFG_PATH"
+    if ! sudo cat "$VFIO_CFG_PATH" | grep --quiet "add_driver+="; then
+        echo 'add_driver+=" "' >> "$VFIO_CFG_PATH"
+    fi 
+    if ! sudo cat "$VFIO_CFG_PATH" | grep "add_driver+=" | grep --quiet -P "( |\")$driver( |\")"; then
+        sudo sed -i "s/^add_driver+=\" \{0,1\}/&$driver /" "$VFIO_CFG_PATH"
+        echo "addDriverToInitramfs: Added \"$driver\" to add_driver in $VFIO_CFG_PATH"
+    else
+        echo "addDriverToInitramfs: No action required. \"$driver\" already exists in add_driver in $VFIO_CFG_PATH"
+    fi
+}
+
+function applyInitramfsChanges() {
+    sudo dracut -f --kver `uname -r`
+    #TODO: Find out if this needs to be executed again after every kernel update.
+}
+
+if [ "$COMMAND" = "add-driver" ]; then
+    addInitramfsDriver "$PARAM"
+elif [ "$COMMAND" = "apply" ]; then
+    applyInitramfsChanges
+fi
