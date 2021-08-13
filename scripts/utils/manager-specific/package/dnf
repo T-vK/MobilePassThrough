@@ -66,5 +66,8 @@ if [ "$COMMAND" = "install" ]; then
     fi
 elif [ "$COMMAND" = "update" ]; then
     updatePackageInfo
+else
+    echo "ERROR: Invalid command"
+    exit 1
 fi
 

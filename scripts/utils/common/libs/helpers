@@ -25,7 +25,23 @@ ACPI_TABLES_DIR="${PROJECT_DIR}/acpi-tables"
 HELPER_ISO_FILES_DIR="${PROJECT_DIR}/helper-iso-files"
 LOG_BASE_DIR="${PROJECT_DIR}/logs"
 
-shopt -s expand_aliases
+C_NC='\033[0m' # No Color
+C_RED='\033[0;31m'
+C_GREEN='\033[0;32m'
+C_ORANGE='\033[1;33m'
+
+function echo_red() {
+    echo -e "${C_RED}$@${C_NC}"
+}
+function echo_green() {
+    echo -e "${C_GREEN}$@${C_NC}"
+}
+function echo_orange() {
+    echo -e "${C_ORANGE}$@${C_NC}"
+}
+function echo_white() {
+    echo -e "$@"
+}
 
 function loadConfig() {
     # If user.conf doesn't exist use the default.conf
@@ -41,3 +57,5 @@ function loadConfig() {
         exit
     fi
 }
+
+shopt -s expand_aliases
