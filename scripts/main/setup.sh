@@ -11,8 +11,6 @@ loadConfig
 #####################################################################################################
 
 source "${PROJECT_DIR}/requirements.sh"
-source "$COMMON_UTILS_LIBS_DIR/cpu-check"
-source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 
 alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
 alias getMissingFiles="${COMMON_UTILS_TOOLS_DIR}/get-missing-files"
@@ -76,6 +74,9 @@ if ! runtimeKernelHasParams "${KERNEL_PARAMS_GENERAL[*]}"; then
 else
     echo "> [Skipped] General kernel params already set on running kernel."
 fi
+
+source "$COMMON_UTILS_LIBS_DIR/cpu-check"
+source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 
 #if [ "$HAS_INTEL_CPU" = true ]; then
     if ! runtimeKernelHasParams "${KERNEL_PARAMS_INTEL_CPU[*]}"; then
