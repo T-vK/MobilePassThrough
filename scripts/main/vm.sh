@@ -8,8 +8,6 @@ loadConfig
 # or start the previously created Windows VM, if called like this: `./vm.sh`
 #####################################################################################################
 
-VM_START_MODE="qemu" # qemu or virt-install
-
 if [ "$1" = "install" ]; then
     VM_INSTALL=true
 elif [ "$1" = "start" ]; then
@@ -114,6 +112,12 @@ if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-drive" "file=${HELPER_ISO},index=2,media=cdrom")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${HELPER_ISO}")
+fi
+
+if [ "$VM_START_MODE" = "virt-install" ]; then
+    if ! sudo virsh net-list | grep default | grep --quiet active; then
+        sudo virsh net-start default
+    fi
 fi
 
 #QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")

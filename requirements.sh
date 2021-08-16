@@ -35,8 +35,8 @@ EXEC_DEPS_OVMF_VBIOS_PATCH=("git" "docker") # git moby-engine
 EXEC_DEPS_GENERATE_CONFIG=("crudini") # crudini
 EXEC_DEPS_VBIOS_FINDER=("git" "wget" "curl" "unzip" "ruby" "gem" "bundle" "7za" "make" "innoextract" "upx") # git wget curl-minimal unzip ruby rubygems rubygem-bundler p7zip make innoextract upx
 FILE_DEPS_VBIOS_FINDER=("/usr/include/rub*/ruby.h") # ruby-devel
-EXEC_DEPS_VIRTUALIZATION=("qemu-system-x86_64" "virsh" "virt-viewer" "spicy") # qemu-system-x86-core libvirt-client virt-viewer spice-gtk-tools
-FILE_DEPS_VIRTUALIZATION=("/usr/share/OVMF/OVMF_CODE.fd" "/usr/share/OVMF/OVMF_VARS.fd") # edk2-ovmf 
+EXEC_DEPS_VIRTUALIZATION=("qemu-system-x86_64" "virsh" "virt-viewer" "virt-install" "spicy" "socat") # qemu-system-x86-core libvirt-client virt-viewer virt-install spice-gtk-tools socat
+FILE_DEPS_VIRTUALIZATION=("/usr/share/OVMF/OVMF_CODE.fd" "/usr/share/OVMF/OVMF_VARS.fd" "/usr/share/libvirt/networks/default.xml") # edk2-ovmf libvirt-daemon-config-network
 EXEC_DEPS_RDP=("remmina") # remmina
 EXEC_DEPS_SAMBA=("samba") # samba
 EXEC_DEPS_IGPU_PASSTHROUGH=("uuid" "intel-virtual-output") # uuid xorg-x11-drv-intel
@@ -61,7 +61,7 @@ FILE_DEPS_LOOKING_GLASS+=("/usr/include/X11/extensions/Xinerama.h") # libXineram
 FILE_DEPS_LOOKING_GLASS+=("/usr/include/SDL2/SDL.h" "/usr/include/SDL2/SDL_syswm.h") # SDL2-devel (will be removed in B5 probably)
 FILE_DEPS_LOOKING_GLASS+=("/usr/include/SDL2/SDL_ttf.h") # SDL2_ttf-devel (will be removed in B5 probably)
 #FILE_DEPS_LOOKING_GLASS+=("/usr/share/texlive/texmf-dist/fonts/opentype/public/gnu-freefont/FreeMono.otf") # this file is not actually a dependency # texlive-gnu-freefont # TODO: check if texlive-gnu-freefont is actually a dependency
-
+EXEC_DEPS_LIVE_ISO+=("wget" "xorriso" "mksquashfs" "unsquashfs") # wget xorriso squashfs-tools
 #############################################################################################################################
 
 ALL_EXEC_DEPS="" # Will contain all content of all variables starting with EXEC_DEPS

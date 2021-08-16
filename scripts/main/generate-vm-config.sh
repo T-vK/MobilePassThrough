@@ -88,7 +88,9 @@ interactiveCfg "Enable dma-buf. (Yet another way to get display access to your V
 interactiveCfg "Enable QXL. (Required for Windows installation; has to be disabled after the Nvidia driver has been installed!)" USE_QXL
 interactiveCfg "Provide the VM with a fake battery (Highly recommended to avoid Error 43)" USE_FAKE_BATTERY
 interactiveCfg "Patch OVMF with your dGPU ROM if you supply one. (Highly recommended to avoid Error 43)" PATCH_OVMF_WITH_VROM
+interactiveCfg "Tool to use to start/install the VM. (qemu or virt-install)" VM_START_MODE
 interactiveCfg "List of USB devices to pass through. (Semicolon separated, e.g. vendorid=0x0b12,productid=0x9348;vendorid=0x0b95,productid=0x1790)" USB_DEVICES
 # TODO: Make selecting USB devices easier
 # TODO: Auto detect PCI addresses for GPUs
 # TODO: Don't ask for Bumblebee if there is no nvidia gpu
+# TODO: Add auto option for CPU cores, RAM and dGPU driver

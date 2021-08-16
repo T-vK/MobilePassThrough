@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=MobilePassThrough
+Exec=/usr/bin/gnome-terminal -- /home/liveuser/Downloads/get-mbpt.sh
+Terminal=false
+Type=Application
+StartupNotify=true
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

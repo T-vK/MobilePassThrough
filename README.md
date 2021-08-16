@@ -202,8 +202,13 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 ## TODO
 
 ### High prio
-- Test service auto reboot
+- Create a bootable live version of this project
+- Find a good way to share a prebuilt ISO
 - Test on Ubuntu
+- Add auto option for RAM, CPU Cores and DGPU driver
+- Document all the new features
+- Create a first Beta release
+- Test with an Nvidia notebook
 - Fix automatic Nvidia driver installation in the VM (fix chocolatey)
 - Fix RDP
 - Fix Samba sharing
@@ -213,13 +218,13 @@ Credits to [korewaChino](https://github.com/T-vK/MobilePassThrough/pull/13) for 
 - Add nuveau driver compatibility
 - Allow the user to decide if he wants bumblebee or not (for Nvidia GPUs)
 - More detailed output about how the device is muxed
-- Create a bootable live version of this project
+- Test service auto reboot
 - Create packages (deb, rpm, etc)
 - Add compatibility for Arch, Debian, Pop OS etc...
 - Make this project work better on systems that already have a non-default GPU driver installed
 - Make it easy to uninstall the dependencies and undo the changes to the systm config (like kernel parameters)
 - Find a way to circumvent Error 43 for AMD GPUs like the `Radeon RX Vega M GL`
-- Reduce the size of the ovmf-vbios-patch Docker image
+- Reduce the size of the ovmf-vbios-patch Docker image or build it completely outside of docker
 - Make the USB passthrough device selection easier (i.e. display a list of devices that can be selected)
 - Look into hotplugging and check if the GPU can be hotplugged during VM runtime
 - Check if required dependencies are installed for each script

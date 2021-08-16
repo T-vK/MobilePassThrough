@@ -23,6 +23,7 @@ SCRIPTS_DIR="${PROJECT_DIR}/scripts"
 THIRDPARTY_DIR="${PROJECT_DIR}/thirdparty"
 ACPI_TABLES_DIR="${PROJECT_DIR}/acpi-tables"
 HELPER_ISO_FILES_DIR="${PROJECT_DIR}/helper-iso-files"
+LIVE_ISO_FILES_DIR="${PROJECT_DIR}/live-iso-files"
 LOG_BASE_DIR="${PROJECT_DIR}/logs"
 
 C_NC='\033[0m' # No Color

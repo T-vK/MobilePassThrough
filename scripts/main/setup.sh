@@ -33,9 +33,14 @@ alias removeAutoStartService="'${SERVICE_MANAGER}' remove-autostart-service"
 mkdir -p "${THIRDPARTY_DIR}"
 
 MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
-if [ "$MISSING_EXECUTABLES" != "" ]; then
+MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
+
+if [ "$MISSING_EXECUTABLES" != "" ] || [ "$MISSING_FILES" != "" ]; then
     echo "> Update package info..."
     updatePkgInfo
+fi
+
+if [ "$MISSING_EXECUTABLES" != "" ]; then
     echo "> Find and install packages containing executables that we need..."
     getExecPkg "$ALL_EXEC_DEPS" # Find and install packages containing executables that we need
     MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
@@ -46,10 +51,7 @@ else
     echo "> [Skipped] Executable dependencies are already installed."
 fi
 
-MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
 if [ "$MISSING_FILES" != "" ]; then
-    echo "> Update package info..."
-    updatePkgInfo
     echo "> Find and install packages containing files that we need..."
     getFilePkg "$ALL_FILE_DEPS" # Find and install packages containing specific files that we need
     MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"

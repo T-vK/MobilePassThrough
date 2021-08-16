@@ -29,6 +29,39 @@ make
 # Utilize systemd-tmpfiles to automatically set required permissions on /dev/shm/looking-glass
 sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
 sudo bash -c "echo 'f /dev/shm/looking-glass 0660 $(logname) kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/10-looking-glass.conf
+
+# Adjust permissions for systems with AppArmor
+if [ -d "/etc/apparmor.d" ]; then
+    if ! sudo cat /etc/apparmor.d/local/abstractions/libvirt-qemu | grep --quiet '/dev/shm/looking-glass rw,'; then
+        sudo bash -c "echo '/dev/shm/looking-glass rw,' >> /etc/apparmor.d/local/abstractions/libvirt-qemu"
+        sudo systemctl restart apparmor
+    fi
+fi
+
+# Adjust permissions for systems with SELinux
+if [ -d "/etc/selinux" ]; then
+    TE_FILE="./lookingglass-fix-qemu.te"
+    MOD_FILE="./lookingglass-fix-qemu.mod"
+    PP_FILE="./lookingglass-fix-qemu.pp"
+    echo "module lookingglass-fix-qemu 1.0;" > "${TE_FILE}"
+    echo "" >> "${TE_FILE}"
+    echo "require {" >> "${TE_FILE}"
+    echo "        type tmpfs_t;" >> "${TE_FILE}"
+    echo "        type svirt_t;" >> "${TE_FILE}"
+    echo "        class file { getattr map open };" >> "${TE_FILE}"
+    echo "}" >> "${TE_FILE}"
+    echo "" >> "${TE_FILE}"
+    echo "#============= svirt_t ==============" >> "${TE_FILE}"
+    echo "allow svirt_t tmpfs_t:file { getattr open };" >> "${TE_FILE}"
+    echo "" >> "${TE_FILE}"
+    echo "#!!!! This avc can be allowed using the boolean 'domain_can_mmap_files'" >> "${TE_FILE}"
+    echo "allow svirt_t tmpfs_t:file map;" >> "${TE_FILE}"
+
+    checkmodule -M -m -o "${MOD_FILE}" "${TE_FILE}"
+    semodule_package -o "${PP_FILE}" -m "${MOD_FILE}"
+    sudo semodule -i "${PP_FILE}"
+fi
 
 # Download the Nvidia Capture SDK if it hasn'T been downlaoded already
 cd "${THIRDPARTY_DIR}"

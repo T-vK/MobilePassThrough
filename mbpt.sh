@@ -86,6 +86,8 @@ elif [ "$COMMAND" = "remove" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/vm.sh" remove
 elif [ "$COMMAND" = "start" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/vm.sh" start $2
+elif [ "$COMMAND" = "live" ]; then
+    sudo "${MAIN_SCRIPTS_DIR}/generate-live-iso.sh" "$2"
 elif [ "$COMMAND" = "auto" ]; then
     #sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh" || echo "Exiting..." && exit 1
     sudo "${MAIN_SCRIPTS_DIR}/setup.sh" auto || echo "Exiting..." && exit 1
