@@ -12,6 +12,12 @@ if [ "$1" = "install" ]; then
     VM_INSTALL=true
 elif [ "$1" = "start" ]; then
     VM_INSTALL=false
+elif [ "$1" = "auto" ]; then
+    if sudo fdisk -lu "${DRIVE_IMG}" 2> /dev/null | grep --quiet 'Microsoft'; then
+        VM_INSTALL=false
+    else
+        VM_INSTALL=true
+    fi
 elif [ "$1" = "remove" ]; then
     if [ $VM_START_MODE = "virt-install" ]; then
         sudo virsh destroy --domain "${VM_NAME}"
