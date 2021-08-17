@@ -81,6 +81,11 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--vcpu" "${CPU_CORE_COUNT}")
 fi
 
+if [ "$RAM_SIZE" = "auto" ]; then
+    FREE_RAM="$(free -g | grep 'Mem: ' | tr -s ' ' | cut -d ' ' -f4)"
+    RAM_SIZE="$((FREE_RAM-2))G"
+fi
+
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-m" "${RAM_SIZE}")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
@@ -177,26 +182,6 @@ else
     fi
 fi
 
-echo "> Retrieving and parsing DGPU IDs..."
-DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
-DGPU_VENDOR_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f1)
-DGPU_DEVICE_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f2)
-DGPU_SS_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
-DGPU_SS_VENDOR_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f1)
-DGPU_SS_DEVICE_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f2)
-
-if [ -z "$DGPU_IDS" ]; then
-    echo "> Error: Failed to retrieve DGPU IDs!"
-    echo "> DGPU_PCI_ADDRESS: ${DGPU_PCI_ADDRESS}"
-    echo "> DGPU_IDS: $DGPU_IDS"
-    echo "> DGPU_VENDOR_ID: $DGPU_VENDOR_ID"
-    echo "> DGPU_DEVICE_ID: $DGPU_DEVICE_ID"
-    echo "> DGPU_SS_IDS: $DGPU_SS_IDS"
-    echo "> DGPU_SS_VENDOR_ID: $DGPU_SS_VENDOR_ID"
-    echo "> DGPU_SS_DEVICE_ID: $DGPU_SS_DEVICE_ID"
-    exit
-fi
-
 echo "> Loading vfio-pci kernel module..."
 sudo modprobe vfio-pci
 
@@ -235,6 +220,45 @@ fi
 
 if [ "$DGPU_PASSTHROUGH" = true ]; then
     echo "> Using dGPU passthrough..."
+
+    if [ "$DGPU_PCI_ADDRESS" = "auto" ]; then
+        availableGpusIds="$(sudo ${OPTIRUN_PREFIX}lshw -C display -businfo | grep 'pci@' | cut -d'@' -f2 | cut -d' ' -f1 | cut -d':' -f2-)"
+
+        while IFS= read -r pciAddress; do
+            gpuId="$(sudo ${OPTIRUN_PREFIX}lspci -s "$pciAddress")"
+            if [[ "$gpuInfo" != *"Intel"* ]]; then
+                DGPU_PCI_ADDRESS="$pciAddress"
+                break
+            fi
+        done <<< "$availableGpusIds"
+    fi
+
+    if [ "$HOST_DGPU_DRIVER" = "auto" ]; then
+        HOST_DGPU_DRIVER="$(sudo ${OPTIRUN_PREFIX}lspci -s "$DGPU_PCI_ADDRESS" -vv | grep driver | cut -d':' -f2 | cut -d' ' -f2-)"
+    fi
+
+    echo "> dGPU is: '$DGPU_PCI_ADDRESS' with driver '$HOST_DGPU_DRIVER'"
+    
+    echo "> Retrieving and parsing DGPU IDs..."
+    DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
+    DGPU_VENDOR_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f1)
+    DGPU_DEVICE_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f2)
+    DGPU_SS_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
+    DGPU_SS_VENDOR_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f1)
+    DGPU_SS_DEVICE_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f2)
+
+    if [ -z "$DGPU_IDS" ]; then
+        echo "> Error: Failed to retrieve DGPU IDs!"
+        echo "> DGPU_PCI_ADDRESS: ${DGPU_PCI_ADDRESS}"
+        echo "> DGPU_IDS: $DGPU_IDS"
+        echo "> DGPU_VENDOR_ID: $DGPU_VENDOR_ID"
+        echo "> DGPU_DEVICE_ID: $DGPU_DEVICE_ID"
+        echo "> DGPU_SS_IDS: $DGPU_SS_IDS"
+        echo "> DGPU_SS_VENDOR_ID: $DGPU_SS_VENDOR_ID"
+        echo "> DGPU_SS_DEVICE_ID: $DGPU_SS_DEVICE_ID"
+        exit 1
+    fi
+
     echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
     driver unbind "${DGPU_PCI_ADDRESS}"
     echo "> Binding dGPU to VFIO driver..."
@@ -275,67 +299,86 @@ else
     echo "> Not using dGPU passthrough..."
 fi
 
-if [ "$SHARE_IGPU" = true ]; then
-    echo "> Using mediated iGPU passthrough..."
-    vgpu init # load required kernel modules
+if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
 
-    # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
-    #        So for now we can't create a new vGPU every time the VM starts.
-    #vgpu remove "${IGPU_PCI_ADDRESS}" &> /dev/null # Ensure there are no vGPUs before creating a new one
-    VGPU_UUID="$(vgpu get "${IGPU_PCI_ADDRESS}" | head -1)"
-    if [ "$VGPU_UUID" == "" ]; then
-        echo "> Creating a vGPU for mediated iGPU passthrough..."
-        VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
-        if [ "$?" = "1" ]; then
-            echo "> Failed creating a vGPU. Try again. If you still get this error, you have to reboot. This seems to be a bug in Linux."
-            exit 1
-        fi
+    if [ "$IGPU_PCI_ADDRESS" = "auto" ]; then
+        availableGpusIds="$(sudo ${OPTIRUN_PREFIX}lshw -C display -businfo | grep 'pci@' | cut -d'@' -f2 | cut -d' ' -f1 | cut -d':' -f2-)"
+
+        while IFS= read -r pciAddress; do
+            gpuInfo="$(sudo ${OPTIRUN_PREFIX}lspci -s "$pciAddress")"
+            if [[ "$gpuInfo" == *"Intel"* ]]; then
+                IGPU_PCI_ADDRESS="$pciAddress"
+                break
+            fi
+        done <<< "$availableGpusIds"
     fi
     
-    # TODO: same as for iGPU
-    if [ "$VM_START_MODE" = "qemu" ]; then
+    if [ "$IGPU_PCI_ADDRESS" != "auto" ]; then
+        echo "> Using mediated iGPU passthrough..."
+        echo "> iGPU is: $IGPU_PCI_ADDRESS"
 
-        if [ "$USE_DMA_BUF" = true ]; then
-            echo "> Using dma-buf..."
-            QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
-            DMA_BUF_PARAM=",display=on,x-igd-opregion=on"
-        else
-            echo "> Not using dma-buf..."
-            DMA_BUF_PARAM=""
-        fi
+        vgpu init # load required kernel modules
 
-        if [ -z "$IGPU_ROM" ]; then
-            echo "> Not using IGPU vBIOS override..."
-            IGPU_ROM_PARAM=",rom.bar=on"
-        else
-            echo "> Using IGPU vBIOS override..."
-            IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
+        # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
+        #        So for now we can't create a new vGPU every time the VM starts.
+        #vgpu remove "${IGPU_PCI_ADDRESS}" &> /dev/null # Ensure there are no vGPUs before creating a new one
+        VGPU_UUID="$(vgpu get "${IGPU_PCI_ADDRESS}" | head -1)"
+        if [ "$VGPU_UUID" == "" ]; then
+            echo "> Creating a vGPU for mediated iGPU passthrough..."
+            VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
+            if [ "$?" = "1" ]; then
+                echo "> Failed creating a vGPU. Try again. If you still get this error, you have to reboot. This seems to be a bug in Linux."
+                exit 1
+            fi
         fi
-
-        QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=05.0,sysfsdev=/sys/bus/mdev/devices/${VGPU_UUID}${IGPU_ROM_PARAM}${DMA_BUF_PARAM}") # GVT-G
-    elif [ "$VM_START_MODE" = "virt-install" ]; then
-        if [ "$USE_DMA_BUF" = true ]; then
-            echo "> Using dma-buf..."
-            #QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
-            QEMU_PARAMS+=("-set" "device.hostdev1.x-igd-opregion=on")
-            GVTG_DISPLAY_STATE="on"
-        else
-            echo "> Not using dma-buf..."
-            GVTG_DISPLAY_STATE="off"
-        fi
-
-        if [ -z "$IGPU_ROM" ]; then
-            echo "> Not using IGPU vBIOS override..."
-            IGPU_ROM_PARAM=",rom.bar=on"
-        fi
-        VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/@model=vfio-pci")
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
         
-        if [ ! -z "$IGPU_ROM" ]; then
-            echo "> Using IGPU vBIOS override..."
-            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
+        # TODO: same as for iGPU
+        if [ "$VM_START_MODE" = "qemu" ]; then
+
+            if [ "$USE_DMA_BUF" = true ]; then
+                echo "> Using dma-buf..."
+                QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+                DMA_BUF_PARAM=",display=on,x-igd-opregion=on"
+            else
+                echo "> Not using dma-buf..."
+                DMA_BUF_PARAM=""
+            fi
+
+            if [ -z "$IGPU_ROM" ]; then
+                echo "> Not using IGPU vBIOS override..."
+                IGPU_ROM_PARAM=",rom.bar=on"
+            else
+                echo "> Using IGPU vBIOS override..."
+                IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
+            fi
+
+            QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=05.0,sysfsdev=/sys/bus/mdev/devices/${VGPU_UUID}${IGPU_ROM_PARAM}${DMA_BUF_PARAM}") # GVT-G
+        elif [ "$VM_START_MODE" = "virt-install" ]; then
+            if [ "$USE_DMA_BUF" = true ]; then
+                echo "> Using dma-buf..."
+                #QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+                QEMU_PARAMS+=("-set" "device.hostdev1.x-igd-opregion=on")
+                GVTG_DISPLAY_STATE="on"
+            else
+                echo "> Not using dma-buf..."
+                GVTG_DISPLAY_STATE="off"
+            fi
+
+            if [ -z "$IGPU_ROM" ]; then
+                echo "> Not using IGPU vBIOS override..."
+                IGPU_ROM_PARAM=",rom.bar=on"
+            fi
+            VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
+            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/@model=vfio-pci")
+            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
+            
+            if [ ! -z "$IGPU_ROM" ]; then
+                echo "> Using IGPU vBIOS override..."
+                VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
+            fi
         fi
+    else
+        echo "> No iGPU found. - Not using mediated iGPU passthrough..."
     fi
 else
     echo "> Not using mediated iGPU passthrough..."
@@ -474,14 +517,16 @@ if [ $VM_INSTALL = true ]; then
     sudo virsh undefine --domain "${VM_NAME}" --nvram &> /dev/null
 fi
 
-if [ "$DRY_RUN" = false ]; then
+if [ "$DRY_RUN" = false ] && [ $VM_INSTALL = true ]; then
     echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
 fi
 if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-monitor" "unix:/tmp/${VM_NAME}-monitor,server,nowait")
 
     if [ "$DRY_RUN" = false ]; then
-        bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
+        if [ $VM_INSTALL = true ]; then
+            QEMU_PARAMS+=("-monitor" "unix:/tmp/${VM_NAME}-monitor,server,nowait")
+            bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
+        fi
 
         echo "> Starting the spice client @localhost:${SPICE_PORT}..."
         bash -c "sleep 2; spicy -h localhost -p ${SPICE_PORT}" &
@@ -509,8 +554,9 @@ if [ "$VM_START_MODE" = "qemu" ]; then
     fi
 elif [ "$VM_START_MODE" = "virt-install" ]; then
     if [ "$DRY_RUN" = false ]; then
-        bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
-
+        if [ $VM_INSTALL = true ]; then
+            bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
+        fi
         echo "> Starting the Virtual Machine using virt-install..."
     fi
     #VIRT_INSTALL_PARAMS+=("--debug")

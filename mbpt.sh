@@ -25,6 +25,7 @@ function printHelp() {
     echo '    setup        Install required dependencies and set required kernel parameters'
     echo '    install      Create and install the VM'
     echo '    start        Start the VM'
+    echo '    live         Create / Flash a Live ISO image of this project'
     # TODO: Split start/install in pre-start, start/install, post-start ()
     # TODO implement:
     #echo '    get-xml      Print out the VM configuration as XML'
@@ -49,6 +50,12 @@ function printHelp() {
     echo ''
     echo '    # Start the VM'
     echo '    mbpt.sh start'
+    echo ''
+    echo '    # Create a Live ISO'
+    echo '    mbpt.sh live buid'
+    echo ''
+    echo '    # Flash a Live ISO to the USB drive /dev/sdx'
+    echo '    mbpt.sh live flash /dev/sdx'
     echo ''
     echo '    # Print the qemu command that would have been used to start the VM'
     echo '    mbpt.sh start dry-run'
@@ -78,7 +85,7 @@ elif [ "$COMMAND" = "check" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh"
 elif [ "$COMMAND" = "configure" ]; then
     "${MAIN_SCRIPTS_DIR}/generate-vm-config.sh"
-elif [ "$COMMAND" = "iso" ]; then
+elif [ "$COMMAND" = "helper-iso" ]; then
     "${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh"
 elif [ "$COMMAND" = "install" ] || [ "$COMMAND" = "create" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install $2
@@ -87,7 +94,7 @@ elif [ "$COMMAND" = "remove" ]; then
 elif [ "$COMMAND" = "start" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/vm.sh" start $2
 elif [ "$COMMAND" = "live" ]; then
-    sudo "${MAIN_SCRIPTS_DIR}/generate-live-iso.sh" "$2"
+    sudo "${MAIN_SCRIPTS_DIR}/generate-live-iso.sh" "$2" "$3"
 elif [ "$COMMAND" = "auto" ]; then
     #sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh" || echo "Exiting..." && exit 1
     sudo "${MAIN_SCRIPTS_DIR}/setup.sh" auto || echo "Exiting..." && exit 1

@@ -75,3 +75,9 @@ ALL_FILE_DEPS_VARS="$(set -o posix ; set | grep -P '^FILE_DEPS' | cut -d'=' -f1 
 for deps in $ALL_FILE_DEPS_VARS; do
     ALL_FILE_DEPS+="$(eval "echo \" \${$deps[*]}\"")"
 done
+
+ALL_KERNEL_PARAMS="" # Will contain all content of all variables starting with KERNEL_PARAMS
+ALL_KERNEL_PARAMS_VARS="$(set -o posix ; set | grep -P '^KERNEL_PARAMS' | cut -d'=' -f1 | tr '\n' ' ')"
+for params in $ALL_KERNEL_PARAMS_VARS; do
+    ALL_KERNEL_PARAMS+="$(eval "echo \" \${$params[*]}\"")"
+done

@@ -120,8 +120,8 @@ if [ "$HAS_NVIDIA_GPU" = true ]; then # TODO: Don't force Bumblebee and the prop
     fi
 fi
 
-if [[ "$(docker images -q ovmf-vbios-patch 2> /dev/null)" == "" ]]; then
-    echo "> Image 'ovmf-vbios-patch' has already been built."
+if [[ "$(sudo docker images -q ovmf-vbios-patch 2> /dev/null)" == "" ]]; then
+    echo "> Building 'ovmf-vbios-patch' Docker Image..."
     ovmfVbiosPatchSetup
 else
     echo "> [Skipped] Image 'ovmf-vbios-patch' has already been built."

@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=MobilePassThrough
-Exec=/usr/bin/gnome-terminal -- /home/liveuser/Downloads/get-mbpt.sh
+Exec=/usr/bin/gnome-terminal --maximize -- /home/liveuser/get-mbpt.sh
 Terminal=false
 Type=Application
 StartupNotify=true
