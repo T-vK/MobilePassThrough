@@ -72,16 +72,18 @@ function build_method_1() {
     echo "IFS='' read -r -d '' GET_MBPT_SCRIPT <<\"EOF\"" >> "${TMP_SCRIPT}"
     echo "$(cat ${LIVE_ISO_FILES_DIR}/get-mbpt.sh)" >> "${TMP_SCRIPT}"
     echo "EOF" >> "${TMP_SCRIPT}"
-    echo 'echo "$GET_MBPT_SCRIPT" > /etc/skel/' >> "${TMP_SCRIPT}"
+    echo 'echo "$GET_MBPT_SCRIPT" > /etc/skel/get-mbpt.sh' >> "${TMP_SCRIPT}"
+    echo "chmod +x /etc/skel/get-mbpt.sh" >> "${TMP_SCRIPT}"
     echo "IFS='' read -r -d '' GET_MBPT_DESKTOP_FILE <<\"EOF\"" >> "${TMP_SCRIPT}"
     echo "$(cat ${LIVE_ISO_FILES_DIR}/mbpt.desktop)" >> "${TMP_SCRIPT}"
     echo "EOF" >> "${TMP_SCRIPT}"
-    echo 'echo "$GET_MBPT_DESKTOP_FILE" > /etc/skel/.config/autostart/' >> "${TMP_SCRIPT}"
-    echo 'echo "$GET_MBPT_DESKTOP_FILE" > /usr/share/applications/' >> "${TMP_SCRIPT}"
+    echo 'echo "$GET_MBPT_DESKTOP_FILE" > /etc/skel/.config/autostart/mbpt.desktop' >> "${TMP_SCRIPT}"
+    echo 'echo "$GET_MBPT_DESKTOP_FILE" > /usr/share/applications/mbpt.desktop' >> "${TMP_SCRIPT}"
+    sudo chmod +x "${TMP_SCRIPT}"
 
     sudo editliveos \
     --noshell \
-    --script "${LIVE_ISO_FILES_DIR}/rootfs-mod.sh" \
+    --script "${TMP_SCRIPT}" \
     --extra-kernel-args "$ALL_KERNEL_PARAMS" \
     --output "${LIVE_ISO_FILES_DIR}" \
     --name "mbpt" \
