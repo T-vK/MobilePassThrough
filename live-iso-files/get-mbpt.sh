@@ -11,12 +11,15 @@ REQUIRED_DISK_SPACE=60 #Gigabytes
 MBPT_BASE_PATH=""
 while sleep 1; do
     printf "%c" "."
-    devices="$(sudo df --output=avail,target -B 1G | sed 's/^ *//')"
+    devices="$(sudo df --output=avail,target -B 1G 2> /dev/null | sed 's/^ *//')"
     while IFS= read -r deviceLine; do
         availableSpace=$(echo "$deviceLine" | cut -d' ' -f1)
         mountpoint="$(echo "$deviceLine" | cut -d' ' -f2-)"
-        if [[ $availableSpace -ge $REQUIRED_DISK_SPACE ]]; then
-            if sudo fallocate -l "${REQUIRED_DISK_SPACE}G" "${mountpoint}/size_test.bin"; then
+        if [ -d "${mountpoint}/mbpt/MobilePassThrough" ]; then
+            MBPT_BASE_PATH="$(echo "${mountpoint}/mbpt" | tr -s '/')"
+            break
+        elif [[ $availableSpace -ge $REQUIRED_DISK_SPACE ]]; then
+            if sudo fallocate -l "${REQUIRED_DISK_SPACE}G" "${mountpoint}/size_test.bin" &> /dev/null; then
                 sudo rm -f "${mountpoint}/_size_test.bin"
                 MBPT_BASE_PATH="$(echo "${mountpoint}/mbpt" | tr -s '/')"
                 break
@@ -60,16 +63,12 @@ if [ ! -d "${MBPT_BASE_PATH}/MobilePassThrough" ]; then
 
     echo "Downloading the MobilePassThrough project..."
     git clone -b "unattended-win-install" https://github.com/T-vK/MobilePassThrough.git
-    cd MobilePassThrough
-    echo "Run MobilePassThrough compatibility check..."
-    ./mbpt.sh check
-    echo "Starting MobilePassThrough in auto mode..."
-    ./mbpt.sh auto
-else
-    echo "Run MobilePassThrough compatibility check..."
-    ./mbpt.sh check
-    echo "Starting MobilePassThrough VM..."
-    ./mbpt.sh start
 fi
+
+cd MobilePassThrough
+echo "Run MobilePassThrough compatibility check..."
+./mbpt.sh check
+echo "Starting MobilePassThrough in auto mode..."
+./mbpt.sh auto
+
 $SHELL
-sleep infinity

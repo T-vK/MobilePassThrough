@@ -19,16 +19,17 @@ elif [ "$1" = "auto" ]; then
         VM_INSTALL=true
     fi
 elif [ "$1" = "remove" ]; then
-    if [ $VM_START_MODE = "virt-install" ]; then
+    if [ "$VM_START_MODE" = "virt-install" ]; then
         sudo virsh destroy --domain "${VM_NAME}"
         sudo virsh undefine --domain "${VM_NAME}" --nvram
-    #elif [ $VM_START_MODE = "qemu" ]; then
+    #elif [ "$VM_START_MODE" = "qemu" ]; then
     #    
     fi
     if [[ ${DRIVE_IMG} == *.img ]]; then
         sudo rm -f "${DRIVE_IMG}"
     fi
     rm -f "${OVMF_VARS_VM}"
+    exit
 else
     echo "> Error: No valid vm.sh parameter was found!"
     exit 1
@@ -111,7 +112,7 @@ QEMU_PARAMS+=("-boot" "menu=on")
 QEMU_PARAMS+=("-boot" "once=d")
 QEMU_PARAMS+=("-k" "en-us")
 
-if [ $VM_INSTALL = true ]; then
+if [ "$VM_INSTALL" = true ]; then
     if [ "$VM_START_MODE" = "qemu" ]; then
         QEMU_PARAMS+=("-drive" "file=${INSTALL_IMG},index=1,media=cdrom")
     elif [ "$VM_START_MODE" = "virt-install" ]; then
@@ -168,7 +169,7 @@ else
     exit
 fi
 
-if [ ! -f "${OVMF_VARS_VM}" ] || [ $VM_INSTALL = true ]; then
+if [ ! -f "${OVMF_VARS_VM}" ] || [ "$VM_INSTALL" = true ]; then
     echo "> Creating fresh OVMF_VARS copy for this VM..."
     sudo rm -f "${OVMF_VARS_VM}"
     sudo cp "${OVMF_VARS}" "${OVMF_VARS_VM}"
@@ -333,54 +334,57 @@ if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
             echo "> Creating a vGPU for mediated iGPU passthrough..."
             VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
             if [ "$?" = "1" ]; then
-                echo "> Failed creating a vGPU. Try again. If you still get this error, you have to reboot. This seems to be a bug in Linux."
-                exit 1
+                echo "> Failed creating a vGPU. (You can try again. If you still get this error, you have to reboot. This seems to be a bug in Linux.)"
+                echo "> Continuing without mediated iGPU passthrough..."
+                VGPU_UUID=""
             fi
         fi
         
-        # TODO: same as for iGPU
-        if [ "$VM_START_MODE" = "qemu" ]; then
+        if [ "$VGPU_UUID" != "" ]; then
+            # TODO: same as for iGPU
+            if [ "$VM_START_MODE" = "qemu" ]; then
 
-            if [ "$USE_DMA_BUF" = true ]; then
-                echo "> Using dma-buf..."
-                QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
-                DMA_BUF_PARAM=",display=on,x-igd-opregion=on"
-            else
-                echo "> Not using dma-buf..."
-                DMA_BUF_PARAM=""
-            fi
+                if [ "$USE_DMA_BUF" = true ]; then
+                    echo "> Using dma-buf..."
+                    QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+                    DMA_BUF_PARAM=",display=on,x-igd-opregion=on"
+                else
+                    echo "> Not using dma-buf..."
+                    DMA_BUF_PARAM=""
+                fi
 
-            if [ -z "$IGPU_ROM" ]; then
-                echo "> Not using IGPU vBIOS override..."
-                IGPU_ROM_PARAM=",rom.bar=on"
-            else
-                echo "> Using IGPU vBIOS override..."
-                IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
-            fi
+                if [ -z "$IGPU_ROM" ]; then
+                    echo "> Not using IGPU vBIOS override..."
+                    IGPU_ROM_PARAM=",rom.bar=on"
+                else
+                    echo "> Using IGPU vBIOS override..."
+                    IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
+                fi
 
-            QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=05.0,sysfsdev=/sys/bus/mdev/devices/${VGPU_UUID}${IGPU_ROM_PARAM}${DMA_BUF_PARAM}") # GVT-G
-        elif [ "$VM_START_MODE" = "virt-install" ]; then
-            if [ "$USE_DMA_BUF" = true ]; then
-                echo "> Using dma-buf..."
-                #QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
-                QEMU_PARAMS+=("-set" "device.hostdev1.x-igd-opregion=on")
-                GVTG_DISPLAY_STATE="on"
-            else
-                echo "> Not using dma-buf..."
-                GVTG_DISPLAY_STATE="off"
-            fi
+                QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=05.0,sysfsdev=/sys/bus/mdev/devices/${VGPU_UUID}${IGPU_ROM_PARAM}${DMA_BUF_PARAM}") # GVT-G
+            elif [ "$VM_START_MODE" = "virt-install" ]; then
+                if [ "$USE_DMA_BUF" = true ]; then
+                    echo "> Using dma-buf..."
+                    #QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+                    QEMU_PARAMS+=("-set" "device.hostdev1.x-igd-opregion=on")
+                    GVTG_DISPLAY_STATE="on"
+                else
+                    echo "> Not using dma-buf..."
+                    GVTG_DISPLAY_STATE="off"
+                fi
 
-            if [ -z "$IGPU_ROM" ]; then
-                echo "> Not using IGPU vBIOS override..."
-                IGPU_ROM_PARAM=",rom.bar=on"
-            fi
-            VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
-            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/@model=vfio-pci")
-            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
-            
-            if [ ! -z "$IGPU_ROM" ]; then
-                echo "> Using IGPU vBIOS override..."
-                VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
+                if [ -z "$IGPU_ROM" ]; then
+                    echo "> Not using IGPU vBIOS override..."
+                    IGPU_ROM_PARAM=",rom.bar=on"
+                fi
+                VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
+                VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/@model=vfio-pci")
+                VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
+                
+                if [ ! -z "$IGPU_ROM" ]; then
+                    echo "> Using IGPU vBIOS override..."
+                    VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
+                fi
             fi
         fi
     else
@@ -448,7 +452,7 @@ if [ "$PATCH_OVMF_WITH_VROM" = true ]; then
             sudo rm -rf "${PATCHED_OVMF_FILES_DIR}/tmp-build"
         fi
         OVMF_CODE="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"
-        if [ $VM_INSTALL = true ]; then
+        if [ "$VM_INSTALL" = true ]; then
             echo "> Creating fresh copy of patched OVMF VARS..."
             rm -f "${OVMF_VARS_VM}"
             sudo cp "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd" "${OVMF_VARS_VM}"
@@ -517,19 +521,19 @@ fi
 #sudo bash -c "echo 'user = root' >> /etc/libvirt/qemu.conf"
 #sudo systemctl restart libvirtd
 
-if [ $VM_INSTALL = true ]; then
+if [ "$VM_INSTALL" = true ]; then
     echo "> Deleting VM if it already exists..."
     sudo virsh destroy --domain "${VM_NAME}" &> /dev/null
     sudo virsh undefine --domain "${VM_NAME}" --nvram &> /dev/null
 fi
 
-if [ "$DRY_RUN" = false ] && [ $VM_INSTALL = true ]; then
+if [ "$DRY_RUN" = false ] && [ "$VM_INSTALL" = true ]; then
     echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
 fi
 if [ "$VM_START_MODE" = "qemu" ]; then
 
     if [ "$DRY_RUN" = false ]; then
-        if [ $VM_INSTALL = true ]; then
+        if [ "$VM_INSTALL" = true ]; then
             QEMU_PARAMS+=("-monitor" "unix:/tmp/${VM_NAME}-monitor,server,nowait")
             bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
         fi
@@ -560,7 +564,7 @@ if [ "$VM_START_MODE" = "qemu" ]; then
     fi
 elif [ "$VM_START_MODE" = "virt-install" ]; then
     if [ "$DRY_RUN" = false ]; then
-        if [ $VM_INSTALL = true ]; then
+        if [ "$VM_INSTALL" = true ]; then
             bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
         fi
         echo "> Starting the Virtual Machine using virt-install..."
@@ -570,7 +574,7 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
         VIRT_INSTALL_PARAMS+=("--qemu-commandline='${param}'")
     done
 
-    #if [ $VM_INSTALL = true ]; then
+    #if [ "$VM_INSTALL" = true ]; then
         if [ "$DRY_RUN" = true ]; then
             echo "> Generating virt-install command (dry-run)..."
             echo ""
