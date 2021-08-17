@@ -97,9 +97,19 @@ elif [ "$COMMAND" = "live" ]; then
     sudo "${MAIN_SCRIPTS_DIR}/generate-live-iso.sh" "$2" "$3"
 elif [ "$COMMAND" = "auto" ]; then
     #sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh" || echo "Exiting..." && exit 1
-    sudo "${MAIN_SCRIPTS_DIR}/setup.sh" auto || echo "Exiting..." && exit 1
-    sudo "${MAIN_SCRIPTS_DIR}/iommu-check.sh" || echo "Exiting..." && exit 1
-    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install
+    sudo "${MAIN_SCRIPTS_DIR}/setup.sh" auto
+    if [ $? -eq 0 ]; then
+        sudo "${MAIN_SCRIPTS_DIR}/iommu-check.sh"
+        if [ $? -eq 0 ]; then
+            sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install
+        else
+            echo "Exiting..."
+            exit 1
+        fi
+    else
+        echo "Exiting..."
+        exit 1
+    fi
 elif [ "$COMMAND" = "vbios" ]; then
     if [ "$2" == "extract" ]; then
         mkdir -p "$4/"

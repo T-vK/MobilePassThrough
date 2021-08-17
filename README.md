@@ -6,7 +6,7 @@ To achieve that goal I have written a collection of scripts [accessible via mbpt
 
 ### MBPT vs MBPT Live
 
-- (Work in progress; I'm 99% there. Only the kernel params are missing.) You can either flash the MBPT Live ISO to a USB device and boot it to try it out without actually messing with your system. ([Download here](https://github.com/T-vK/MobilePassThrough/releases) or run `./mbpt.sh live build` to build it yourself.) 
+- You can either flash the MBPT Live ISO to a USB device and boot it to try it out without actually messing with your system. ([Download here](https://github.com/T-vK/MobilePassThrough/releases) or run `./mbpt.sh live build` to build it yourself.) 
 - Or you can let `./mbpt.sh auto` set everything up on your exisitng Linux installation.  
 
 Either way it is 100% automated, no user interaction required:

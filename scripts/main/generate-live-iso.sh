@@ -53,11 +53,7 @@ fi
 
 cd "${PROJECT_DIR}"
 
-#editliveos --extra-kernel-args "$ALL_KERNEL_PARAMS" -o "${LIVE_ISO_FILES_DIR}" -n "mbpt" "${ISO_FILE_MODIFIED}"
-
-#exit
-
-function build() {
+function build_method_1() {
     if [ ! -f "${ISO_FILE}" ]; then
         echo "> Downloading Fedora ISO..."
         wget "${ISO_DOWNLOAD_URL}" -c -O "${ISO_FILE}.part"
@@ -68,45 +64,21 @@ function build() {
 
     sudo rm -rf "${ISO_FILE_MODIFIED}"
 
-    #echo "> Extracting the squashfs image and unsquash it..."
-    #sudo rm -f "${SQUASHFS_IMG}"
-    #xorriso -dev "${ISO_FILE}" -osirrox "on" -extract "${SOURCE_SQUASHFS_IMG}" "${SQUASHFS_IMG}"
-    #sudo rm -rf "${SQUASHFS_EXTRACTED}"
-    #sudo unsquashfs -d "${SQUASHFS_EXTRACTED}" "${SQUASHFS_IMG}" # Unsquash the squashfs and mount the rootfs in read-write mode
-    #sudo rm -f "${SQUASHFS_IMG}"
-
-    #echo "> Mounting the rootfs image of the unsquashed squashfs image..."
-    #sudo umount --force "${ROOTFS_MOUNTPOINT}"
-    #sudo rm -rf "${ROOTFS_MOUNTPOINT}"
-    #sudo mkdir -p "${ROOTFS_MOUNTPOINT}"
-    #sudo mount -o loop,rw "${ROOTFS_IMG}" "${ROOTFS_MOUNTPOINT}"
-
-    #echo "> Adding files to the rootfs..."
-    #sudo mkdir -p "${ROOTFS_MOUNTPOINT}/etc/skel/.config/autostart/"
-    #sudo cp "${LIVE_ISO_FILES_DIR}/get-mbpt.sh" "${ROOTFS_MOUNTPOINT}/etc/skel/"
-    #sudo cp "${LIVE_ISO_FILES_DIR}/mbpt.desktop" "${ROOTFS_MOUNTPOINT}/etc/skel/.config/autostart/"
-    #sudo cp "${LIVE_ISO_FILES_DIR}/mbpt.desktop" "${ROOTFS_MOUNTPOINT}/usr/share/applications/"
-
-    #echo "> Unmounting the rootfs image again..."
-    #sudo umount "${ROOTFS_MOUNTPOINT}"
-    #sudo rm -rf "${ROOTFS_MOUNTPOINT}"
-
-    #echo "> Making a new squashfs image from the unsquashed modified squashfs image..."
-    #sudo mksquashfs "${SQUASHFS_EXTRACTED}" "${SQUASHFS_IMG_MODIFIED}" -b 1024k -comp xz -Xbcj x86 -e boot
-    #sudo rm -rf "${SQUASHFS_EXTRACTED}"
-
-    #echo "> Overwriting the squashfs image inside the ISO with the modified one..."
-    #xorriso -indev "${ISO_FILE}" -outdev "${ISO_FILE_MODIFIED}" -md5 "all" -compliance no_emul_toc \
-    #-update "${SQUASHFS_IMG_MODIFIED}" "/LiveOS/squashfs.img" \
-    #-boot_image any replay
-
     echo "> Rebuilding the ISO adding kernel parameters and some files..."
-    sudo rm -f "/tmp/get-mbpt.sh"
-    sudo rm -f "/tmp/mbpt.desktop"
-    sudo cp "${LIVE_ISO_FILES_DIR}/get-mbpt.sh" "/tmp/get-mbpt.sh"
-    sudo cp "${LIVE_ISO_FILES_DIR}/mbpt.desktop" "/tmp/mbpt.desktop"
+    TMP_SCRIPT="/tmp/tmp-rootfs-setup.sh"
+    sudo rm -f "${TMP_SCRIPT}"
+    echo "#!/usr/bin/env bash" > "${TMP_SCRIPT}"
+    echo "mkdir -p /etc/skel/.config/autostart/" >> "${TMP_SCRIPT}"
+    echo "IFS='' read -r -d '' GET_MBPT_SCRIPT <<\"EOF\"" >> "${TMP_SCRIPT}"
+    echo "$(cat ${LIVE_ISO_FILES_DIR}/get-mbpt.sh)" >> "${TMP_SCRIPT}"
+    echo "EOF" >> "${TMP_SCRIPT}"
+    echo 'echo "$GET_MBPT_SCRIPT" > /etc/skel/' >> "${TMP_SCRIPT}"
+    echo "IFS='' read -r -d '' GET_MBPT_DESKTOP_FILE <<\"EOF\"" >> "${TMP_SCRIPT}"
+    echo "$(cat ${LIVE_ISO_FILES_DIR}/mbpt.desktop)" >> "${TMP_SCRIPT}"
+    echo "EOF" >> "${TMP_SCRIPT}"
+    echo 'echo "$GET_MBPT_DESKTOP_FILE" > /etc/skel/.config/autostart/' >> "${TMP_SCRIPT}"
+    echo 'echo "$GET_MBPT_DESKTOP_FILE" > /usr/share/applications/' >> "${TMP_SCRIPT}"
 
-    #echo "> Rebuilding the ISO adding kernel parameters and the modified squashfs image..."
     sudo editliveos \
     --noshell \
     --script "${LIVE_ISO_FILES_DIR}/rootfs-mod.sh" \
@@ -117,32 +89,96 @@ function build() {
     
     mv "${LIVE_ISO_FILES_DIR}/mbpt-"*.iso "${ISO_FILE_MODIFIED}"
 
-    sudo rm -f "/tmp/get-mbpt.sh"
-    sudo rm -f "/tmp/mbpt.desktop"
+    sudo rm -f "${TMP_SCRIPT}"
+}
+
+function build_method_2() {
+    if [ ! -f "${ISO_FILE}" ]; then
+        echo "> Downloading Fedora ISO..."
+        wget "${ISO_DOWNLOAD_URL}" -c -O "${ISO_FILE}.part"
+        mv "${ISO_FILE}.part" "${ISO_FILE}"
+    else
+        echo "> [Skipped] Fedora ISO already downloaded."
+    fi
+
+    sudo rm -rf "${ISO_FILE_MODIFIED}"
+
+    echo "> Extracting the squashfs image and unsquash it..."
+    sudo rm -f "/tmp/grub.conf"
+    sudo rm -f "/tmp/isolinux.cfg"
+    sudo rm -f "/tmp/BOOT.conf"
+    sudo rm -f "/tmp/grub.cfg"
+    sudo rm -f "${SQUASHFS_IMG}"
+    xorriso -dev "${ISO_FILE}" -osirrox "on" \
+    -extract "${SOURCE_SQUASHFS_IMG}" "${SQUASHFS_IMG}" \
+    -extract "/isolinux/grub.conf" "/tmp/grub.conf" \
+    -extract "/isolinux/isolinux.cfg" "/tmp/isolinux.cfg" \
+    -extract "/EFI/BOOT/BOOT.conf" "/tmp/BOOT.conf" \
+    -extract "/EFI/BOOT/grub.cfg" "/tmp/grub.cfg"
+    sudo rm -rf "${SQUASHFS_EXTRACTED}"
+    sudo unsquashfs -d "${SQUASHFS_EXTRACTED}" "${SQUASHFS_IMG}" # Unsquash the squashfs and mount the rootfs in read-write mode
+    sudo rm -f "${SQUASHFS_IMG}"
+
+    echo "> Mounting the rootfs image of the unsquashed squashfs image..."
+    sudo umount --force "${ROOTFS_MOUNTPOINT}"
+    sudo rm -rf "${ROOTFS_MOUNTPOINT}"
+    sudo mkdir -p "${ROOTFS_MOUNTPOINT}"
+    sudo mount -o loop,rw "${ROOTFS_IMG}" "${ROOTFS_MOUNTPOINT}"
+
+    echo "> Adding files to the rootfs..."
+    sudo mkdir -p "${ROOTFS_MOUNTPOINT}/etc/skel/.config/autostart/"
+    sudo cp "${LIVE_ISO_FILES_DIR}/get-mbpt.sh" "${ROOTFS_MOUNTPOINT}/etc/skel/"
+    sudo cp "${LIVE_ISO_FILES_DIR}/mbpt.desktop" "${ROOTFS_MOUNTPOINT}/etc/skel/.config/autostart/"
+    sudo cp "${LIVE_ISO_FILES_DIR}/mbpt.desktop" "${ROOTFS_MOUNTPOINT}/usr/share/applications/"
+
+    echo "> Unmounting the rootfs image again..."
+    sudo umount "${ROOTFS_MOUNTPOINT}"
+    sudo rm -rf "${ROOTFS_MOUNTPOINT}"
+
+    echo "> Making a new squashfs image from the unsquashed modified squashfs image..."
+    sudo mksquashfs "${SQUASHFS_EXTRACTED}" "${SQUASHFS_IMG_MODIFIED}" -b 1024k -comp xz -Xbcj x86 -e boot
+    sudo rm -rf "${SQUASHFS_EXTRACTED}"
+
+    sudo sed -i "s/rd.live.image/$1 &/" "/tmp/grub.conf"
+    sudo sed -i "s/rd.live.image/$1 &/" "/tmp/isolinux.cfg"
+    sudo sed -i "s/rd.live.image/$1 &/" "/tmp/BOOT.conf"
+    sudo sed -i "s/rd.live.image/$1 &/" "/tmp/grub.cfg"
+
+    echo "> Overwriting the squashfs image inside the ISO with the modified one..."
+    xorriso -indev "${ISO_FILE}" -outdev "${ISO_FILE_MODIFIED}" -md5 "all" -compliance no_emul_toc \
+    -update "${SQUASHFS_IMG_MODIFIED}" "/LiveOS/squashfs.img" \
+    -update "/tmp/grub.conf" "/isolinux/grub.conf" \
+    -update "/tmp/isolinux.cfg" "/isolinux/isolinux.cfg" \
+    -update "/tmp/BOOT.conf" "/EFI/BOOT/BOOT.conf" \
+    -update "/tmp/grub.cfg" "/EFI/BOOT/grub.cfg" \
+    -boot_image any replay
     
-    #echo "> Removing modified squashfs image..."
-    #sudo rm -f "${SQUASHFS_IMG_MODIFIED}"
+    echo "> Removing modified squashfs image..."
+    sudo rm -f "${SQUASHFS_IMG_MODIFIED}"
 }
 
 function flash() {
     echo "> Flashing ISO to USB drive"
-    mp="$(mount | grep "$DRIVE" | cut -d' ' -f3)" # get mountpoint for device
-    if [ "$mp" != "" ]; then
-        echo "$DRIVE is still mounted. Unmounting $DRIVE now..."
-        sudo umount --force "$mp"
+    mps="$(mount | grep "$DRIVE" | cut -d' ' -f3)" # get mountpoint for device
+    if [ "$mps" != "" ]; then
+        echo "> $DRIVE is still mounted."
+        while IFS= read -r mp; do
+            echo "> Unmounting partition mounted at ${mp}..."
+            sudo umount --force "$mp"
+        done <<< "$mps"
     fi
-    yes "" | sudo livecd-iso-to-disk --format ext4 --efi --force --overlay-size-mb 8000 "${ISO_FILE_MODIFIED}" "$DRIVE"
+    yes "" | sudo livecd-iso-to-disk --format ext4 --efi --force --overlay-size-mb 8000 --extra-kernel-args "$ALL_KERNEL_PARAMS" "${ISO_FILE_MODIFIED}" "$DRIVE"
 }
 
 if [ "$MODE" = "flash" ]; then
     if [ "$DRIVE" = "" ]; then
-        echo "ERROR: Missing parameter. You have to specify the device onto which to flash the Live ISO! E.g. /dev/sda"
+        echo "> [Error] Missing parameter. You have to specify the device onto which to flash the Live ISO! E.g. /dev/sda"
         exit 1
     fi
     if [ ! -f "${ISO_FILE_MODIFIED}" ]; then
-        build
+        build_method_1
     fi
     flash
 elif [ "$MODE" = "build" ]; then
-    build
+    build_method_1
 fi

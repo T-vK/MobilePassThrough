@@ -176,11 +176,10 @@ fi
 
 if [ "$1" = "auto" ]; then
     if [ "$REBOOT_REQUIRED" = true ]; then
-        echo "> Creating a temporary service that will run on next reboot and create the Windows VM"
+        echo "> Creating a temporary service that will run on next reboot and continue the installation..."
         createAutoStartService "${PROJECT_DIR}/mbpt.sh auto"
-        echo "> Rebooting in 15 seconds... Press Ctrl+C to reboot now."
-        #sleep 300
-        #sudo shutdown -r 0
+        echo "> Rebooting in 30 seconds... Press Ctrl+C to cancel."
+        sleep 30 && sudo shutdown -r 0
     else
         removeAutoStartService &> /dev/null
         echo "> No reboot required."
