@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
-echo "Disabling sleep and force keeping the screen on..."
+echo "> Disabling sleep and force keeping the screen on..."
 sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
-gsettings set org.gnome.settings-daemon.plugins.power sleep-display-ac 0
-gsettings set org.gnome.settings-daemon.plugins.power sleep-display-battery 0
 gsettings set org.gnome.desktop.session idle-delay 0
 
-printf "%s" "Waiting for a device supporting big files with at least 60Gb of free storage to be mounted ..."
+printf "%s" "> Waiting for a device supporting big files with at least 60Gb of free storage to be mounted ..."
 REQUIRED_DISK_SPACE=60 #Gigabytes
 MBPT_BASE_PATH=""
 while sleep 1; do
@@ -24,7 +22,7 @@ while sleep 1; do
                 MBPT_BASE_PATH="$(echo "${mountpoint}/mbpt" | tr -s '/')"
                 break
             #else
-            #    echo "Device mounted at '$mountpoint' doesn't support big files"
+            #    echo "> Device mounted at '$mountpoint' doesn't support big files"
             fi
         fi
     done <<< "$devices"
@@ -32,43 +30,46 @@ while sleep 1; do
         break
     fi
 done
-printf "\n%s\n"  "Device found! Files will be stored under: $MBPT_BASE_PATH"
+printf "\n%s\n"  "> Device found! Files will be stored under: $MBPT_BASE_PATH"
 sudo mkdir -p "$MBPT_BASE_PATH"
 sudo chown "$(logname):$(id -gn "$(logname)")" "$MBPT_BASE_PATH"
 cd "$MBPT_BASE_PATH"
 
 if [ ! -d "${MBPT_BASE_PATH}/MobilePassThrough" ]; then
-    printf "%s" "Waiting for an Internet connection ..."
+    printf "%s" "> Waiting for an Internet connection ..."
     while ! timeout 5 ping -c 1 -n github.com &> /dev/null; do
         printf "%c" "."
         sleep 1
     done
-    printf "\n%s\n"  "Connected!"
+    printf "\n%s\n"  "> Connected!"
 
     requiredDomains="github.com mirrors.fedoraproject.org fedorapeople.org developer.nvidia.com tb.rg-adguard.net software-download.microsoft.com download.microsoft.com chocolatey.org" # www.techpowerup.com
 
     for domain in $requiredDomains; do
-        printf "%s" "Waiting for $domain to be available ..."
+        printf "%s" "> Waiting for $domain to be available ..."
         while ! timeout 5 ping -c 1 -n $domain &> /dev/null; do
             printf "%c" "."
             sleep 1
         done
-        printf "\n%s\n"  "$domain is available!"
+        printf "\n%s\n"  "> $domain is available!"
     done
 
     if ! command -v git &> /dev/null; then
-        echo "Installing git..."
+        echo "> Installing git..."
         sudo dnf install -y git
     fi
 
-    echo "Downloading the MobilePassThrough project..."
+    echo "> Downloading the MobilePassThrough project..."
     git clone -b "unattended-win-install" https://github.com/T-vK/MobilePassThrough.git
+else
+    echo "[Skipped] MobilePassThrough appears to have been set up already in a previous boot."
 fi
 
 cd MobilePassThrough
-echo "Run MobilePassThrough compatibility check..."
+echo "> Running MobilePassThrough compatibility check..."
 ./mbpt.sh check
-echo "Starting MobilePassThrough in auto mode..."
+echo "> Waiting for 10 seconds before continuing..."
+echo "> Starting MobilePassThrough in auto mode..."
 ./mbpt.sh auto
 
 $SHELL

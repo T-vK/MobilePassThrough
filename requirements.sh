@@ -25,7 +25,7 @@ KERNEL_PARAMS_AMD_CPU=("amd_iommu=on") # 'on' is not a docuemnted option for thi
 KERNEL_PARAMS_INTEL_GPU=("i915.enable_gvt=1") # enable mediated iGPU passthrough support (GVT-g) on Intel iGPUs
 #KERNEL_PARAMS_AMD_GPU=()
 #KERNEL_PARAMS_NVIDIA_GPU=()
-KERNEL_PARAMS_BUMBLEBEE_NVIDIA=("nouveau.modeset=0")
+#KERNEL_PARAMS_BUMBLEBEE_NVIDIA=("nouveau.modeset=0")
 
 
 # TODO: check if we should use relative paths to be more distribution-gnostic

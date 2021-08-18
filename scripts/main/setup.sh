@@ -41,23 +41,23 @@ if [ "$MISSING_EXECUTABLES" != "" ] || [ "$MISSING_FILES" != "" ]; then
 fi
 
 if [ "$MISSING_EXECUTABLES" != "" ]; then
-    echo "> Find and install packages containing executables that we need..."
+    echo "> Finding and installing packages containing executables that we need..."
     getExecPkg "$ALL_EXEC_DEPS" # Find and install packages containing executables that we need
     MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
     if [ "$MISSING_EXECUTABLES" != "" ]; then
-        echo "> ERROR: Failed to install packages providing the following executables automatically: $MISSING_EXECUTABLES"
+        echo "> [Error] Failed to install packages providing the following executables automatically: $MISSING_EXECUTABLES"
     fi
 else
     echo "> [Skipped] Executable dependencies are already installed."
 fi
 
 if [ "$MISSING_FILES" != "" ]; then
-    echo "> Find and install packages containing files that we need..."
+    echo "> Finding and installing packages containing files that we need..."
     getFilePkg "$ALL_FILE_DEPS" # Find and install packages containing specific files that we need
     MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
     if [ "$MISSING_FILES" != "" ]; then
         MISSING_FILES="$(echo "$MISSING_EXECUTABLES" | sed 's/\s\+/\n/g')" # replace spaces with new lines
-        echo "> ERROR: Failed to install packages providing the following executables automatically:"
+        echo "> [Error] Failed to install packages providing the following executables automatically:"
         echo "$MISSING_FILES"
     fi
 else
@@ -110,29 +110,22 @@ source "$COMMON_UTILS_LIBS_DIR/gpu-check"
     fi
 #fi
 
-if [ "$HAS_NVIDIA_GPU" = true ]; then # TODO: Don't force Bumblebee and the proprietary Nvidia driver upon the user
-    if ! runtimeKernelHasParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"; then
-        echo "> Adding Nvidia GPU-specific kernel params..."
-        addKernelParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
-        REBOOT_REQUIRED=true
-    else
-        echo "> [Skipped] Nvidia GPU-specific kernel params already set on running kernel."
-    fi
-fi
+#if [ "$HAS_NVIDIA_GPU" = true ]; then # TODO: Don't force Bumblebee and the proprietary Nvidia driver upon the user
+#    if ! runtimeKernelHasParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"; then
+#        echo "> Adding Nvidia GPU-specific kernel params..."
+#        addKernelParams "${KERNEL_PARAMS_BUMBLEBEE_NVIDIA[*]}"
+#        REBOOT_REQUIRED=true
+#    else
+#        echo "> [Skipped] Nvidia GPU-specific kernel params already set on running kernel."
+#    fi
+#fi
 
-if [[ "$(sudo docker images -q ovmf-vbios-patch 2> /dev/null)" == "" ]]; then
-    echo "> Building 'ovmf-vbios-patch' Docker Image..."
-    ovmfVbiosPatchSetup
-else
-    echo "> [Skipped] Image 'ovmf-vbios-patch' has already been built."
-fi
-
-if [ "$HAS_NVIDIA_GPU" = true ]; then
-    nvidiaSetup
-fi
-if [ "$SUPPORTS_OPTIMUS" = true ]; then
-    bumblebeeSetup
-fi
+#if [ "$HAS_NVIDIA_GPU" = true ]; then
+#    nvidiaSetup
+#fi
+#if [ "$SUPPORTS_OPTIMUS" = true ]; then
+#    bumblebeeSetup
+#fi
 
 if [ ! -f "${ACPI_TABLES_DIR}/fake-battery.aml" ]; then
     echo "> Building fake ACPI SSDT battery..."
@@ -172,6 +165,13 @@ if [ ! -f "$INSTALL_IMG" ]; then
     downloadWindowsIso "$INSTALL_IMG"
 else
     echo "> [Skipped] Windows ISO has already been downloaded."
+fi
+
+if [[ "$(sudo docker images -q ovmf-vbios-patch 2> /dev/null)" == "" ]]; then
+    echo "> Building 'ovmf-vbios-patch' Docker Image..."
+    ovmfVbiosPatchSetup
+else
+    echo "> [Skipped] Image 'ovmf-vbios-patch' has already been built."
 fi
 
 if [ "$1" = "auto" ]; then

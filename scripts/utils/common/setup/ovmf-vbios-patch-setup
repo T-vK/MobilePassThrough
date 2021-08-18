@@ -11,7 +11,9 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 cd "${THIRDPARTY_DIR}"
 
 sudo service docker start
-rm -rf ovmf-with-vbios-patch
-git clone https://github.com/T-vK/ovmf-with-vbios-patch.git
-cd ovmf-with-vbios-patch
-sudo docker build -t ovmf-vbios-patch .
+#rm -rf ovmf-with-vbios-patch
+#git clone https://github.com/T-vK/ovmf-with-vbios-patch.git
+#cd ovmf-with-vbios-patch
+#sudo docker build -t ovmf-vbios-patch .
+sudo docker pull tavk/ovmf-vbios-patch:1.0.1-edk2-stable201905 # Pull instead of build because the root partition of the Live version is too small.
+# TODO: Get rid of Docker and build this thing natively

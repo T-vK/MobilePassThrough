@@ -95,6 +95,14 @@ BAD_GPUS=()
 for GPU_ID in "${GPU_IDS[@]}"; do
     GPU_IOMMU_GROUP=$(echo "${IOMMU_GROUPS}" | grep "${GPU_ID}" | cut -d " " -f 3)
 
+    if [ "$GPU_IOMMU_GROUP" == "" ] ; then # Compensate for Intel iGPUs sometimes not having an IOMMU group at all
+        GPU_NAME="$(lspci -s "${GPU_ID}" | cut  -d' ' -f2-)"
+        if echo "${GPU_NAME}" | grep --quiet "Intel"; then
+            GPU_IOMMU_GROUP="N/A"
+            IOMMU_GROUPS+=$'\n'"IOMMU GROUP N/A ${GPU_ID} ${GPU_NAME}"
+        fi
+    fi
+
     if [ "$GPU_IOMMU_GROUP" == "" ] ; then
         echo_red "[Error] Failed to find the IOMMU group of the GPU with the ID ${GPU_ID}! Have you enabled iommu in the UEFI and kernel?"
     else
