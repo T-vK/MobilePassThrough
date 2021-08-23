@@ -15,7 +15,7 @@ Either way it is 100% automated, no user interaction required:
 
 - [x] Automatically install the required dependencies
 - [x] Automatically configure the kernel parameters to support GPU passthrough
-- [ ] Automatically install Bumblebee and the Nvidia GPU driver if required (I removed this feature because it was too error-prone. Instead we'll just use nuveau or whatever is installed already.)
+- [ ] Automatically install Bumblebee and the Nvidia GPU driver if required (I removed this feature because it was too error-prone. Instead we'll just use nouveau or whatever is installed already.)
 - [x] Automatically check if and to what extend your device is compatible with GPU passthrough.
 - [x] Automatically create and configure a virtual machine that is fully configured for GPU passthrough.
 - [x] Automatically download the Windows 10 installation iso from Microsoft.
@@ -28,7 +28,7 @@ Either way it is 100% automated, no user interaction required:
 - [x] Automatically install the required drivers (ivshmem, other vfio drivers, Intel/Nvidia display drivers)
 - [x] Automatically compile/install/start LookingGlass
 - [x] Automatically configure the network
-- [ ] Automatically set up RDP
+- [x] Automatically set up RDP
 - [x] Automatically install and autostart LookingGlass
 
 And there is also a lot of advanced stuff that I managed to fully automate, like:
@@ -232,7 +232,7 @@ Credits to [Cole Robinson](https://blog.wikichoon.com/) for giving me a lot of i
 - Add virt-install version check because 2.2.1 doesn't seem to support the --xml flag
 
 ### Low prio
-- Add nuveau driver compatibility
+- Add nouveau driver compatibility
 - Allow the user to decide if he wants bumblebee or not (for Nvidia GPUs)
 - More detailed output about how the device is muxed
 - Test service auto reboot

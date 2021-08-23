@@ -8,10 +8,17 @@ loadConfig
 # or start the previously created Windows VM, if called like this: `./vm.sh`
 #####################################################################################################
 
+echo "> Action: $1"
 if [ "$1" = "install" ]; then
     VM_INSTALL=true
 elif [ "$1" = "start" ]; then
     VM_INSTALL=false
+elif [ "$1" = "stop" ]; then
+    if [ "$VM_START_MODE" = "virt-install" ]; then
+        sudo virsh destroy --domain "${VM_NAME}"
+    elif [ "$VM_START_MODE" = "qemu" ]; then
+        killall qemu-system-x86_64
+    fi
 elif [ "$1" = "auto" ]; then
     if sudo fdisk -lu "${DRIVE_IMG}" 2> /dev/null | grep --quiet 'Microsoft'; then
         VM_INSTALL=false
@@ -22,8 +29,8 @@ elif [ "$1" = "remove" ]; then
     if [ "$VM_START_MODE" = "virt-install" ]; then
         sudo virsh destroy --domain "${VM_NAME}"
         sudo virsh undefine --domain "${VM_NAME}" --nvram
-    #elif [ "$VM_START_MODE" = "qemu" ]; then
-    #    
+    elif [ "$VM_START_MODE" = "qemu" ]; then
+        killall qemu-system-x86_64
     fi
     if [[ ${DRIVE_IMG} == *.img ]]; then
         sudo rm -f "${DRIVE_IMG}"
@@ -34,6 +41,8 @@ else
     echo "> Error: No valid vm.sh parameter was found!"
     exit 1
 fi
+
+echo "> Start mode: $VM_START_MODE"
 
 GET_XML=false
 DRY_RUN=false
@@ -82,6 +91,15 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./features/hyperv/vendor_id/@state=on" "--xml" "xpath.set=./features/hyperv/vendor_id/@value='12alphanum'") 
 fi
 
+if [ "$CPU_CORE_COUNT" = "auto" ]; then
+    AVAILABLE_CPU_CORE_COUNT="$(nproc)"
+    CPU_CORE_COUNT="$((AVAILABLE_CPU_CORE_COUNT-1))"
+    if [[ $CPU_CORE_COUNT -gt 16 ]]; then
+        CPU_CORE_COUNT=16
+    fi
+fi
+
+echo "> Using ${CPU_CORE_COUNT} CPU cores..."
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-smp" "${CPU_CORE_COUNT}")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
@@ -90,9 +108,15 @@ fi
 
 if [ "$RAM_SIZE" = "auto" ]; then
     FREE_RAM="$(free -g | grep 'Mem: ' | tr -s ' ' | cut -d ' ' -f4)"
-    RAM_SIZE="$((FREE_RAM-2))G"
+    RAM_SIZE_GB="$((FREE_RAM-1))"
+    if [[ $RAM_SIZE_GB -gt 16 ]]; then
+        RAM_SIZE_GB=16
+    fi
+    RAM_SIZE="${RAM_SIZE_GB}G"
 fi
 
+
+echo "> Using ${RAM_SIZE} of RAM..."
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-m" "${RAM_SIZE}")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
@@ -126,14 +150,27 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${HELPER_ISO}")
 fi
 
-if [ "$VM_START_MODE" = "virt-install" ]; then
-    if ! sudo virsh net-list | grep default | grep --quiet active; then
-        sudo virsh net-start default
-    fi
+if ! sudo virsh net-list | grep default | grep --quiet active; then
+    sudo virsh net-start default
 fi
 
-#QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")
-#QEMU_PARAMS+=("-device" "virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS}")
+INTERFACE_NAME="$(sudo cat /var/lib/libvirt/dnsmasq/default.conf | grep "^interface=" | cut -d'=' -f2-)"
+NETWORK="$(sudo ip route | grep " ${INTERFACE_NAME} " | cut -d' ' -f1)"
+
+if [ "$VM_START_MODE" = "qemu" ]; then
+    QEMU_PARAMS+=("-net" "nic,model=e1000,macaddr=${MAC_ADDRESS}" "-net" "bridge,br=virbr0")
+    #QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")
+    #QEMU_PARAMS+=("-device" "virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS}")
+    #-net user,hostfwd=tcp::13389-:3389 -net nic
+elif [ "$VM_START_MODE" = "virt-install" ]; then
+    VIRT_INSTALL_PARAMS+=("--network" "network=default,model=e1000,mac=${MAC_ADDRESS}")
+    #VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/interface[type=network]/mac@address='${MAC_ADDRESS}'")
+    #VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/interface[0]/source@network=default")
+    #if ! sudo virsh net-list | grep default | grep --quiet active; then
+    #    sudo virsh net-start default
+    #fi
+fi
+
 QEMU_PARAMS+=("-device" "ich9-intel-hda")
 QEMU_PARAMS+=("-device" "hda-output")
 QEMU_PARAMS+=("-device" "pci-bridge,addr=12.0,chassis_nr=2,id=head.2")
@@ -201,7 +238,7 @@ if [ "$USE_LOOKING_GLASS" = true ]; then
         BUFFER_SIZE=$(($BUFFER_SIZE*2))
     done
     LOOKING_GLASS_BUFFER_SIZE="${BUFFER_SIZE}"
-    echo "> Looking Glass buffer size set to: ${LOOKING_GLASS_BUFFER_SIZE}"
+    echo "> Looking Glass buffer size set to: ${LOOKING_GLASS_BUFFER_SIZE}MB"
     if [ "$VM_START_MODE" = "qemu" ]; then
         QEMU_PARAMS+=("-device" "ivshmem-plain,memdev=ivshmem,bus=pcie.0")
         QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}M")
@@ -354,10 +391,10 @@ if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
                 fi
 
                 if [ -z "$IGPU_ROM" ]; then
-                    echo "> Not using IGPU vBIOS override..."
-                    IGPU_ROM_PARAM=",rom.bar=on"
+                    echo "> Not using iGPU vBIOS override..."
+                    #IGPU_ROM_PARAM=",rom.bar=on"
                 else
-                    echo "> Using IGPU vBIOS override..."
+                    echo "> Using iGPU vBIOS override..."
                     IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
                 fi
 
@@ -374,7 +411,7 @@ if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
                 fi
 
                 if [ -z "$IGPU_ROM" ]; then
-                    echo "> Not using IGPU vBIOS override..."
+                    echo "> Not using iGPU vBIOS override..."
                     IGPU_ROM_PARAM=",rom.bar=on"
                 fi
                 VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
@@ -382,7 +419,7 @@ if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
                 VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
                 
                 if [ ! -z "$IGPU_ROM" ]; then
-                    echo "> Using IGPU vBIOS override..."
+                    echo "> Using iGPU vBIOS override..."
                     VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
                 fi
             fi
@@ -410,7 +447,8 @@ fi
 if [ "$USE_QXL" = true ]; then
     echo "> Using QXL..."
     if [ "$VM_START_MODE" = "qemu" ]; then
-        QEMU_PARAMS+=("-device" "qxl,bus=pcie.0,addr=1c.4,id=video.2" "-vga" "qxl")
+        QEMU_PARAMS+=("-device" "qxl,bus=pcie.0,addr=1c.4,id=video.2")
+        #QEMU_PARAMS+=("-vga" "qxl")
     elif [ "$VM_START_MODE" = "virt-install" ]; then
         VIRT_INSTALL_PARAMS+=("--video" "qxl")
     fi
@@ -496,35 +534,57 @@ else
     echo "> Not using virtual input method for keyboard/mouse input..."
 fi
 
-#give_qemu_access() {
-#    local skip_root=true
-#    local -a paths
-#    IFS=/ read -r -a paths <<<"$1"
-#    local i
-#    for (( i = 1; i < ${#paths[@]}; i++ )); do
-#        paths[i]="${paths[i-1]}/${paths[i]}"
-#    done
-#    paths[0]=/
-#    for current_path in "${paths[@]}" ; do
-#        if [ "$skip_root" = true ] && [ "${current_path}" = "/" ]; then
-#            continue
-#        fi
-#        echo "> Granting qemu access to: '${current_path}'"
-#        sudo setfacl --modify user:qemu:rx "${current_path}"
-#        sudo chmod +x "${current_path}"
-#    done
-#    #sudo chmod 777 "$1"
-#}
+RDP_USER=Administrator
+RDP_PASSWORD=admin
 
-#give_qemu_access "${INSTALL_IMG}"
+# Run it once because the first time it prints a useless message instead of actually encrypting
+echo "$RDP_PASSWORD" | remmina --encrypt-password &> /dev/null
 
-#sudo bash -c "echo 'user = root' >> /etc/libvirt/qemu.conf"
-#sudo systemctl restart libvirtd
+# Run it again, hoping it always works the second time
+RDP_PASSWORD_ENCRYPTED="$(echo "$RDP_PASSWORD" | remmina --encrypt-password | grep 'Encrypted password: ' | cut -d':' -f2- | tr -d ' ')"
+
+function autoConnectRdp() {
+    while true; do 
+        VM_IP="$(sudo nmap -sn -n ${NETWORK} -T5 | grep "MAC Address: ${MAC_ADDRESS}" -B 2 | head -1 | rev | cut -d' ' -f1 | rev)"
+        if [ "$VM_IP" != "" ]; then
+            echo ""
+            echo "> The IP address of the VM is: ${VM_IP}"
+            echo ""
+            echo "> Waiting for RDP to be available in the VM..."
+            while true; do
+                if nc -vz "$VM_IP" 3389 &> /dev/null; then
+                    echo "> Opening Remmina to start an RDP connection with the VM..."
+                    remmina -c "rdp://${RDP_USER}:${RDP_PASSWORD_ENCRYPTED}@${VM_IP}" &> /dev/null &
+                    #if [ "$USE_LOOKING_GLASS" = true ]; then
+                    #    echo "> Starting the Looking Glass client..."
+                    #    sudo -u "$(logname)" "${THIRDPARTY_DIR}/LookingGlass/client/build/looking-glass-client" -p "${SPICE_PORT}" 2>&1 | grep '^\[E\]' &
+                    #fi
+                    break
+                fi
+            done
+            break
+        fi
+        sleep 1
+    done
+}
+
+#echo "> Starting RDP autoconnect background task..."
+#autoConnectRdp &
 
 if [ "$VM_INSTALL" = true ]; then
     echo "> Deleting VM if it already exists..."
     sudo virsh destroy --domain "${VM_NAME}" &> /dev/null
     sudo virsh undefine --domain "${VM_NAME}" --nvram &> /dev/null
+fi
+
+
+
+if [ "$USE_SPICE_CLIENT" = "auto"  ] && [ "$USE_SPICE" = true ]; then
+    if [ "$VM_INSTALL" = true ]; then
+        USE_SPICE_CLIENT=true
+    elif [ "$USE_LOOKING_GLASS" = true ]; then
+        USE_SPICE_CLIENT=false
+    fi
 fi
 
 if [ "$DRY_RUN" = false ] && [ "$VM_INSTALL" = true ]; then
@@ -538,8 +598,10 @@ if [ "$VM_START_MODE" = "qemu" ]; then
             bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
         fi
 
-        echo "> Starting the spice client @localhost:${SPICE_PORT}..."
-        bash -c "sleep 2; spicy -h localhost -p ${SPICE_PORT}" &
+        if [ "$USE_SPICE_CLIENT" = true ]; then
+            echo "> Starting the spice client at localhost:${SPICE_PORT}..."
+            bash -c "sleep 2; spicy -h localhost -p ${SPICE_PORT}" &
+        fi
 
         echo "> Starting the Virtual Machine using qemu..."
     fi
@@ -593,8 +655,10 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
         elif [ "$GET_XML" = true ]; then
             VIRT_INSTALL_PARAMS+=("--print-xml")
             sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
-        else
+        elif [ "$VM_INSTALL" = true ]; then
             sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
+        elif [ "$VM_INSTALL" = false ]; then
+            sudo virsh start "${VM_NAME}"
         fi
     #else
     #    if [ "$DRY_RUN" = true ]; then
@@ -612,7 +676,7 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
 
     echo "> Unbinding dGPU from vfio driver..."
     driver unbind "${DGPU_PCI_ADDRESS}"
-    if [ "$HOST_DGPU_DRIVER" = "nvidia" ] || [ "$HOST_DGPU_DRIVER" = "nuveau" ]; then
+    if [ "$HOST_DGPU_DRIVER" = "nvidia" ] || [ "$HOST_DGPU_DRIVER" = "nouveau" ]; then
         echo "> Turn the dGPU off using bumblebee..."
         sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
     fi
@@ -621,7 +685,7 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
 
 fi
 
-if [ "$SHARE_IGPU" = true ]; then
+if [ "$VGPU_UUID" != "" ]; then
     echo "> Keeping Intel vGPU for next VM start..."
 
     # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
@@ -629,4 +693,13 @@ if [ "$SHARE_IGPU" = true ]; then
     #echo "> Remove Intel vGPU..."
     #vgpu remove "${IGPU_PCI_ADDRESS}" "${VGPU_UUID}"
 
+fi
+
+if [ "$VM_INSTALL" = true ]; then
+    if sudo fdisk -lu "${DRIVE_IMG}" 2> /dev/null | grep --quiet 'Microsoft'; then
+        exit 0
+    else
+        echo "> [Error] Seems like the installation failed..."
+        exit 1
+    fi
 fi

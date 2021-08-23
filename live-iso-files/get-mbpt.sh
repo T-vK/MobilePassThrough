@@ -17,7 +17,9 @@ while sleep 1; do
             MBPT_BASE_PATH="$(echo "${mountpoint}/mbpt" | tr -s '/')"
             break
         elif [[ $availableSpace -ge $REQUIRED_DISK_SPACE ]]; then
-            if sudo fallocate -l "${REQUIRED_DISK_SPACE}G" "${mountpoint}/size_test.bin" &> /dev/null; then
+            # Test if the device can handle big files (FAT32 for example can't)
+            #if sudo fallocate -l "${REQUIRED_DISK_SPACE}G" "${mountpoint}/size_test.bin" &> /dev/null; then
+            if sudo dd if=/dev/zero of="${mountpoint}/size_test.bin" bs="${REQUIRED_DISK_SPACE}G" seek=60 count=0 &> /dev/null; then
                 sudo rm -f "${mountpoint}/_size_test.bin"
                 MBPT_BASE_PATH="$(echo "${mountpoint}/mbpt" | tr -s '/')"
                 break
@@ -68,7 +70,13 @@ fi
 cd MobilePassThrough
 echo "> Running MobilePassThrough compatibility check..."
 ./mbpt.sh check
-echo "> Waiting for 10 seconds before continuing..."
+if [ $? -eq 0 ]; then
+    echo "> Waiting for 10 seconds before continuing..."
+    sleep 10
+else
+    echo "> Waiting for 30 seconds before continuing..."
+    sleep 30
+fi
 echo "> Starting MobilePassThrough in auto mode..."
 ./mbpt.sh auto
 

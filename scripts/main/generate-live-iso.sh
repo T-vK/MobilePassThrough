@@ -169,7 +169,7 @@ function flash() {
             sudo umount --force "$mp"
         done <<< "$mps"
     fi
-    yes "" | sudo livecd-iso-to-disk --format ext4 --efi --force --overlay-size-mb 8000 --extra-kernel-args "$ALL_KERNEL_PARAMS" "${ISO_FILE_MODIFIED}" "$DRIVE"
+    yes "" | sudo livecd-iso-to-disk --format ext4 --efi --force --extra-kernel-args "$ALL_KERNEL_PARAMS" "${ISO_FILE_MODIFIED}" "$DRIVE"
 }
 
 if [ "$MODE" = "flash" ]; then

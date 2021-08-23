@@ -28,6 +28,22 @@ else
     echo "> Visual C++ Redistributable Package 2017 x64 already exist in iso folder..."
 fi
 
+if [ ! -f "${HELPER_ISO_FILES_DIR}/bin/spice-guest-tools.exe" ]; then
+    echo "> Downloading Spice Guest Tools..."
+    wget "https://www.spice-space.org/download/windows/spice-guest-tools/spice-guest-tools-0.141/spice-guest-tools-0.141.exe" -O "${HELPER_ISO_FILES_DIR}/bin/spice-guest-tools.exe"
+else
+    echo "> Spice Guest Tools already exists in iso folder..."
+fi
+
+if [ ! -f "${HELPER_ISO_FILES_DIR}/bin/spice-webdavd.msi" ]; then
+    echo "> Downloading Spice WebDAV daemon..."
+    wget "https://www.spice-space.org/download/windows/spice-webdavd/spice-webdavd-x64-2.4.msi" -O "${HELPER_ISO_FILES_DIR}/bin/spice-webdavd.msi"
+else
+    echo "> Spice WebDAV daemon already exists in iso folder..."
+fi
+
+https://www.spice-space.org/download/windows/spice-webdavd/spice-webdavd-x64-2.4.msi
+
 if [ ! -f "${HELPER_ISO_FILES_DIR}/bin/looking-glass-host-setup.exe" ]; then
     #echo "> Downloading Looking Glass Host application..."
     #wget "https://github.com/gnif/LookingGlass/releases/download/${LOOKING_GLASS_VERSION}/looking-glass-host.exe" -O "${HELPER_ISO_FILES_DIR}/bin/looking-glass-host.exe"

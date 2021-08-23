@@ -157,39 +157,10 @@
             <TimeZone>UTC</TimeZone>
             <FirstLogonCommands>
                 <SynchronousCommand wcm:action="add">
-                    <CommandLine>cmd.exe /c wmic useraccount where "name='Administrator'" set PasswordExpires=FALSE</CommandLine>
-                    <Order>1</Order>
-                    <Description>Disable password expiration for Administrator user</Description>
-                </SynchronousCommand>
-                <SynchronousCommand wcm:action="add">
                     <CommandLine>cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\mbpt-helper.bat  cmd /c %i:\mbpt-helper.bat"</CommandLine>
-                    <Description>Install drivers, change some settings and install Looking Glass</Description>
-                    <Order>2</Order>
+                    <Description>Install drivers, guest tools, looking glass, enable RDP, etc.</Description>
+                    <Order>1</Order>
                     <RequiresUserInput>false</RequiresUserInput>
-                </SynchronousCommand>
-                <SynchronousCommand wcm:action="add">
-                    <Order>3</Order>
-                    <Description>Set-ExecutionPolicy Unrestricted</Description>
-                    <RequiresUserInput>false</RequiresUserInput>
-                    <CommandLine>cmd.exe /c powershell -Command "Set-ExecutionPolicy Unrestricted"</CommandLine>
-                </SynchronousCommand>
-                <SynchronousCommand wcm:action="add">
-                    <Order>4</Order>
-                    <RequiresUserInput>false</RequiresUserInput>
-                    <CommandLine>cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\scripts\network-check.ps1  cmd /c powershell -executionpolicy unrestricted -file %i:\scripts\network-check.ps1"</CommandLine>
-                    <Description>Wait for a Network connection</Description>
-                </SynchronousCommand>
-                <SynchronousCommand wcm:action="add">
-                    <Order>5</Order>
-                    <RequiresUserInput>false</RequiresUserInput>
-                    <CommandLine>cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\scripts\chocolatey-install.ps1  cmd /c powershell -executionpolicy unrestricted -file %i:\scripts\chocolatey-install.ps1"</CommandLine>
-                    <Description>Install Chocolatey if possible</Description>
-                </SynchronousCommand>
-                <SynchronousCommand wcm:action="add">
-                    <Order>6</Order>
-                    <RequiresUserInput>false</RequiresUserInput>
-                    <CommandLine>cmd /q /c "FOR %i IN (A B C D E F G H I J K L N M O P Q R S T U V W X Y Z) DO IF EXIST %i:\scripts\gpu-check.ps1  cmd /c powershell -executionpolicy unrestricted -file %i:\scripts\gpu-check.ps1"</CommandLine>
-                    <Description>Check for GPU Errors and install drivers if possible and necessary</Description>
                 </SynchronousCommand>
             </FirstLogonCommands>
         </component>

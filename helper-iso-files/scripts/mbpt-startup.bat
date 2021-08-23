@@ -1,0 +1,1 @@
+powershell -executionpolicy unrestricted -file %APPDATA%\mbpt\gpu-check.ps1
