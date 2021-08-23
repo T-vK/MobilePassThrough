@@ -91,6 +91,11 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./features/hyperv/vendor_id/@state=on" "--xml" "xpath.set=./features/hyperv/vendor_id/@value='12alphanum'") 
 fi
 
+if [ "$MAC_ADDRESS" = "auto" ]; then
+    MAC_ADDRESS=$(printf '52:54:BE:EF:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)))
+fi
+echo "> Using MAC address: ${MAC_ADDRESS}..."
+
 if [ "$CPU_CORE_COUNT" = "auto" ]; then
     AVAILABLE_CPU_CORE_COUNT="$(nproc)"
     CPU_CORE_COUNT="$((AVAILABLE_CPU_CORE_COUNT-1))"
@@ -114,7 +119,6 @@ if [ "$RAM_SIZE" = "auto" ]; then
     fi
     RAM_SIZE="${RAM_SIZE_GB}G"
 fi
-
 
 echo "> Using ${RAM_SIZE} of RAM..."
 if [ "$VM_START_MODE" = "qemu" ]; then
@@ -262,14 +266,12 @@ else
     QEMU_PARAMS+=("-net" "user,smb=${SMB_SHARE_FOLDER}")
 fi
 
-if [ "$DGPU_PASSTHROUGH" = true ]; then
-    echo "> Using dGPU passthrough..."
-
+if [ "$DGPU_PASSTHROUGH" != false ]; then
+    availableGpusIds="$(sudo ${OPTIRUN_PREFIX}lshw -C display -businfo | grep 'pci@' | cut -d'@' -f2 | cut -d' ' -f1 | cut -d':' -f2-)"
     if [ "$DGPU_PCI_ADDRESS" = "auto" ]; then
-        availableGpusIds="$(sudo ${OPTIRUN_PREFIX}lshw -C display -businfo | grep 'pci@' | cut -d'@' -f2 | cut -d' ' -f1 | cut -d':' -f2-)"
-
+        DGPU_PCI_ADDRESS=""
         while IFS= read -r pciAddress; do
-            gpuId="$(sudo ${OPTIRUN_PREFIX}lspci -s "$pciAddress")"
+            gpuInfo="$(sudo ${OPTIRUN_PREFIX}lspci -s "$pciAddress")"
             if [[ "$gpuInfo" != *"Intel"* ]]; then
                 DGPU_PCI_ADDRESS="$pciAddress"
                 break
@@ -277,67 +279,75 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
         done <<< "$availableGpusIds"
     fi
 
-    if [ "$HOST_DGPU_DRIVER" = "auto" ]; then
-        HOST_DGPU_DRIVER="$(sudo ${OPTIRUN_PREFIX}lspci -s "$DGPU_PCI_ADDRESS" -vv | grep driver | cut -d':' -f2 | cut -d' ' -f2-)"
-    fi
+    if [ "$(echo -e "$availableGpusIds" | wc -l)" -le 1 ]; then
+        echo "> Not using dGPU passthrough because single GPU passthrough is not supported yet..."
+    if [ "$DGPU_PCI_ADDRESS" != "" ]; then
+        echo "> Using dGPU passthrough..."
 
-    echo "> dGPU is: '$DGPU_PCI_ADDRESS' with driver '$HOST_DGPU_DRIVER'"
-    
-    echo "> Retrieving and parsing DGPU IDs..."
-    DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
-    DGPU_VENDOR_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f1)
-    DGPU_DEVICE_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f2)
-    DGPU_SS_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
-    DGPU_SS_VENDOR_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f1)
-    DGPU_SS_DEVICE_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f2)
-
-    if [ -z "$DGPU_IDS" ]; then
-        echo "> Error: Failed to retrieve DGPU IDs!"
-        echo "> DGPU_PCI_ADDRESS: ${DGPU_PCI_ADDRESS}"
-        echo "> DGPU_IDS: $DGPU_IDS"
-        echo "> DGPU_VENDOR_ID: $DGPU_VENDOR_ID"
-        echo "> DGPU_DEVICE_ID: $DGPU_DEVICE_ID"
-        echo "> DGPU_SS_IDS: $DGPU_SS_IDS"
-        echo "> DGPU_SS_VENDOR_ID: $DGPU_SS_VENDOR_ID"
-        echo "> DGPU_SS_DEVICE_ID: $DGPU_SS_DEVICE_ID"
-        exit 1
-    fi
-
-    echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
-    driver unbind "${DGPU_PCI_ADDRESS}"
-    echo "> Binding dGPU to VFIO driver..."
-    driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
-    #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
-    # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
-    if [ "$VM_START_MODE" = "qemu" ]; then
-        QEMU_PARAMS+=("-device" "ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=pci.1") # DGPU root port
-    elif [ "$VM_START_MODE" = "virt-install" ]; then
-        VIRT_INSTALL_PARAMS+=("--controller" "type=pci,model=pcie-root-port,address.type=pci,address.bus=0x0,address.slot=0x1c,address.function=0x0,address.multifunction=on,index=1,alias.name=pci.1") # <controller type='pci' model='pcie-root-port'><model name='ioh3420'/></controller>
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/controller/model/@name=ioh3420")
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/controller/target/@chassis=1")
-    fi
-
-    if [ "$VM_START_MODE" = "qemu" ]; then
-        if [ -z "$DGPU_ROM" ]; then
-            echo "> Not using DGPU vBIOS override..."
-            DGPU_ROM_PARAM=",rombar=0"
-        else
-            echo "> Using DGPU vBIOS override..."
-            DGPU_ROM_PARAM=",romfile=${DGPU_ROM}"
+        if [ "$HOST_DGPU_DRIVER" = "auto" ]; then
+            HOST_DGPU_DRIVER="$(sudo ${OPTIRUN_PREFIX}lspci -s "$DGPU_PCI_ADDRESS" -vv | grep driver | cut -d':' -f2 | cut -d' ' -f2-)"
         fi
-        QEMU_PARAMS+=("-device" "vfio-pci,host=${DGPU_PCI_ADDRESS},bus=pci.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}")
-    elif [ "$VM_START_MODE" = "virt-install" ]; then
-        if [ -z "$DGPU_ROM" ]; then
-            echo "> Not using DGPU vBIOS override..."
-            DGPU_ROM_PARAM=",rom.bar=on"
+
+        echo "> dGPU is: '$DGPU_PCI_ADDRESS' with driver '$HOST_DGPU_DRIVER'"
+        
+        echo "> Retrieving and parsing DGPU IDs..."
+        DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
+        DGPU_VENDOR_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f1)
+        DGPU_DEVICE_ID=$(echo "${DGPU_IDS}" | cut -d ":" -f2)
+        DGPU_SS_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -vnn -d "${DGPU_IDS}" | grep "Subsystem:" | grep -oP "\w+:\w+")
+        DGPU_SS_VENDOR_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f1)
+        DGPU_SS_DEVICE_ID=$(echo "${DGPU_SS_IDS}" | cut -d ":" -f2)
+
+        if [ -z "$DGPU_IDS" ]; then
+            echo "> Error: Failed to retrieve DGPU IDs!"
+            echo "> DGPU_PCI_ADDRESS: ${DGPU_PCI_ADDRESS}"
+            echo "> DGPU_IDS: $DGPU_IDS"
+            echo "> DGPU_VENDOR_ID: $DGPU_VENDOR_ID"
+            echo "> DGPU_DEVICE_ID: $DGPU_DEVICE_ID"
+            echo "> DGPU_SS_IDS: $DGPU_SS_IDS"
+            echo "> DGPU_SS_VENDOR_ID: $DGPU_SS_VENDOR_ID"
+            echo "> DGPU_SS_DEVICE_ID: $DGPU_SS_DEVICE_ID"
+            exit 1
         fi
-        VIRT_INSTALL_PARAMS+=("--hostdev" "${DGPU_PCI_ADDRESS},address.bus=1,address.type=pci,address.multifunction=on${DGPU_ROM_PARAM}")
-        if [ ! -z "$DGPU_ROM" ]; then
-            echo "> Using DGPU vBIOS override..."
-            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev/rom/@file=${DGPU_ROM}")
-            QEMU_PARAMS+=("-set" "device.hostdev0.x-pci-sub-device-id=$((16#${DGPU_SS_DEVICE_ID}))")
-            QEMU_PARAMS+=("-set" "device.hostdev0.x-pci-sub-vendor-id=$((16#${DGPU_SS_VENDOR_ID}))")
+
+        echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
+        driver unbind "${DGPU_PCI_ADDRESS}"
+        echo "> Binding dGPU to VFIO driver..."
+        driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
+        #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
+        # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
+        if [ "$VM_START_MODE" = "qemu" ]; then
+            QEMU_PARAMS+=("-device" "ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=pci.1") # DGPU root port
+        elif [ "$VM_START_MODE" = "virt-install" ]; then
+            VIRT_INSTALL_PARAMS+=("--controller" "type=pci,model=pcie-root-port,address.type=pci,address.bus=0x0,address.slot=0x1c,address.function=0x0,address.multifunction=on,index=1,alias.name=pci.1") # <controller type='pci' model='pcie-root-port'><model name='ioh3420'/></controller>
+            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/controller/model/@name=ioh3420")
+            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/controller/target/@chassis=1")
         fi
+
+        if [ "$VM_START_MODE" = "qemu" ]; then
+            if [ -z "$DGPU_ROM" ]; then
+                echo "> Not using DGPU vBIOS override..."
+                DGPU_ROM_PARAM=",rombar=0"
+            else
+                echo "> Using DGPU vBIOS override..."
+                DGPU_ROM_PARAM=",romfile=${DGPU_ROM}"
+            fi
+            QEMU_PARAMS+=("-device" "vfio-pci,host=${DGPU_PCI_ADDRESS},bus=pci.1,addr=00.0,x-pci-sub-device-id=0x${DGPU_SS_DEVICE_ID},x-pci-sub-vendor-id=0x${DGPU_SS_VENDOR_ID},multifunction=on${DGPU_ROM_PARAM}")
+        elif [ "$VM_START_MODE" = "virt-install" ]; then
+            if [ -z "$DGPU_ROM" ]; then
+                echo "> Not using DGPU vBIOS override..."
+                DGPU_ROM_PARAM=",rom.bar=on"
+            fi
+            VIRT_INSTALL_PARAMS+=("--hostdev" "${DGPU_PCI_ADDRESS},address.bus=1,address.type=pci,address.multifunction=on${DGPU_ROM_PARAM}")
+            if [ ! -z "$DGPU_ROM" ]; then
+                echo "> Using DGPU vBIOS override..."
+                VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev/rom/@file=${DGPU_ROM}")
+                QEMU_PARAMS+=("-set" "device.hostdev0.x-pci-sub-device-id=$((16#${DGPU_SS_DEVICE_ID}))")
+                QEMU_PARAMS+=("-set" "device.hostdev0.x-pci-sub-vendor-id=$((16#${DGPU_SS_VENDOR_ID}))")
+            fi
+        fi
+    else
+        echo "> Not using dGPU passthrough..."
     fi
 else
     echo "> Not using dGPU passthrough..."
