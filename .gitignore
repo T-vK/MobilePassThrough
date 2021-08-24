@@ -15,6 +15,7 @@
 /helper-iso-files/drivers
 /helper-iso-files/.checksum
 /live-iso-files/*.iso
+/live-iso-files/scripts/chocolatey-install.ps1
 /utils/nvflash_linux
 /tmp
 .*.swp

@@ -4,9 +4,9 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 loadConfig
 
 #####################################################################################################
-# Simple script to install the packages containing the given executable names or file names
-# Usage: `./apt --executables "curl git wget docker"`
-# Usage: `./apt --files "/usr/include/{ree,ruby}/ruby.h /usr/share/virtio-win/virtio-win.iso"`
+# Simple script to install the packages containing the given executable names or files
+# Usage: `./yum --executables "curl git wget docker"`
+# Usage: `./yum --files "/usr/include/{ree,ruby}/ruby.h /usr/share/virtio-win/virtio-win.iso"`
 #####################################################################################################
 
 alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
@@ -17,21 +17,19 @@ SEARCH_MODE="$2"
 WANTED_ITEMS="$3"
 
 function updatePackageInfo() {
-    sudo apt-get update
+    sudo yum check-update
 }
 
 function installPackages() {
     SEARCH_MODE="$1"
     WANTED_ITEMS="$2"
-    if ! command -v apt-file &> /dev/null; then
-        sudo apt-get install -y apt-file
-    fi
+    
     PACKAGES_TO_INSTALL=""
     for CURRENT_ITEM in $WANTED_ITEMS; do
         if [ "$SEARCH_MODE" = "--executables" ]; then
-            PACKAGE_TO_INSTALL="$(sudo apt-file search {/bin,/sbin,/usr/bin/,/usr/sbin}/$CURRENT_ITEM | head -1 | cut -d':' -f1)"
+            PACKAGE_TO_INSTALL="$(sudo yum provides {/bin,/sbin,/usr/bin/,/usr/sbin}/$CURRENT_ITEM 2> /dev/null | grep ' : ' | head -1 | cut -d'.' -f1 | rev | cut -d'-' -f 2- | rev)"
         elif [ "$SEARCH_MODE" = "--files" ]; then
-            PACKAGE_TO_INSTALL="$(sudo apt-file search $CURRENT_ITEM | head -1 | cut -d':' -f1)"
+            PACKAGE_TO_INSTALL="$(sudo yum provides $CURRENT_ITEM 2> /dev/null | grep ' : ' | head -1 | cut -d'.' -f1 | rev | cut -d'-' -f 2- | rev)"
         fi
         if [ "$?" = "0" ] && [ "$PACKAGE_TO_INSTALL" != "" ]; then
             PACKAGES_TO_INSTALL+=" $PACKAGE_TO_INSTALL"
@@ -40,7 +38,7 @@ function installPackages() {
         fi
     done
     if [ "$PACKAGES_TO_INSTALL" != "" ]; then
-        sudo apt-get install -y $PACKAGES_TO_INSTALL
+        sudo yum install -y $PACKAGES_TO_INSTALL
     fi
 }
 
@@ -72,3 +70,4 @@ else
     echo "ERROR: Invalid command"
     exit 1
 fi
+

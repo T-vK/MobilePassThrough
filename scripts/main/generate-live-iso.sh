@@ -81,7 +81,8 @@ function build_method_1() {
     echo 'echo "$GET_MBPT_DESKTOP_FILE" > /usr/share/applications/mbpt.desktop' >> "${TMP_SCRIPT}"
     sudo chmod +x "${TMP_SCRIPT}"
 
-    sudo editliveos \
+    USERNAME="T-vK" sudo editliveos \
+    --builder "T-vK" \
     --noshell \
     --script "${TMP_SCRIPT}" \
     --extra-kernel-args "$ALL_KERNEL_PARAMS" \

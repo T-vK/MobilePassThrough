@@ -31,6 +31,7 @@ alias createAutoStartService="'${SERVICE_MANAGER}' create-autostart-service"
 alias removeAutoStartService="'${SERVICE_MANAGER}' remove-autostart-service"
 
 mkdir -p "${THIRDPARTY_DIR}"
+mkdir -p "${VM_FILES_DIR}"
 
 MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
 MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
