@@ -8,29 +8,35 @@ loadConfig
 # or start the previously created Windows VM, if called like this: `./vm.sh`
 #####################################################################################################
 
-echo "> Action: $1"
-if [ "$1" = "install" ]; then
-    VM_INSTALL=true
-elif [ "$1" = "start" ]; then
-    VM_INSTALL=false
-elif [ "$1" = "stop" ]; then
+ORIGINAL_VM_ACTION="$1"
+VM_ACTION="$ORIGINAL_VM_ACTION"
+if [ "$VM_ACTION" != "auto" ]; then
+    echo "> Action: $VM_ACTION"
+fi
+
+if [ "$VM_ACTION" = "install" ]; then
+    VM_ACTION="install"
+elif [ "$VM_ACTION" = "start" ]; then
+    VM_ACTION="start"
+elif [ "$VM_ACTION" = "stop" ]; then
     if [ "$VM_START_MODE" = "virt-install" ]; then
         sudo virsh destroy --domain "${VM_NAME}"
     elif [ "$VM_START_MODE" = "qemu" ]; then
-        killall qemu-system-x86_64
+        sudo killall qemu-system-x86_64 &> /dev/null
     fi
-elif [ "$1" = "auto" ]; then
+elif [ "$VM_ACTION" = "auto" ]; then
     if sudo fdisk -lu "${DRIVE_IMG}" 2> /dev/null | grep --quiet 'Microsoft'; then
-        VM_INSTALL=false
+        VM_ACTION="start"
     else
-        VM_INSTALL=true
+        VM_ACTION="install"
     fi
-elif [ "$1" = "remove" ]; then
+    echo "> Action: $VM_ACTION"
+elif [ "$VM_ACTION" = "remove" ]; then
     if [ "$VM_START_MODE" = "virt-install" ]; then
         sudo virsh destroy --domain "${VM_NAME}"
         sudo virsh undefine --domain "${VM_NAME}" --nvram
     elif [ "$VM_START_MODE" = "qemu" ]; then
-        killall qemu-system-x86_64
+        sudo killall qemu-system-x86_64 &> /dev/null
     fi
     if [[ ${DRIVE_IMG} == *.img ]]; then
         sudo rm -f "${DRIVE_IMG}"
@@ -46,7 +52,7 @@ echo "> Start mode: $VM_START_MODE"
 
 GET_XML=false
 DRY_RUN=false
-if [ "$1" = "install" ] || [ "$1" = "start" ]; then
+if [ "$VM_ACTION" = "install" ] || [ "$VM_ACTION" = "start" ]; then
     if [ "$2" = "dry-run" ]; then
         DRY_RUN=true
     elif [ "$2" = "get-xml" ]; then
@@ -63,6 +69,9 @@ alias vgpu="sudo '$COMMON_UTILS_TOOLS_DIR/vgpu-util'"
 VIRT_INSTALL_PARAMS=()
 QEMU_PARAMS=()
 
+#####################################################################################
+############################## Set basic VM parameters ##############################
+#####################################################################################
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-name" "${VM_NAME}")
 elif [ "$VM_START_MODE" = "virt-install" ]; then
@@ -91,43 +100,6 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./features/hyperv/vendor_id/@state=on" "--xml" "xpath.set=./features/hyperv/vendor_id/@value='12alphanum'") 
 fi
 
-if [ "$MAC_ADDRESS" = "auto" ]; then
-    MAC_ADDRESS=$(printf '52:54:BE:EF:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)))
-fi
-echo "> Using MAC address: ${MAC_ADDRESS}..."
-
-if [ "$CPU_CORE_COUNT" = "auto" ]; then
-    AVAILABLE_CPU_CORE_COUNT="$(nproc)"
-    CPU_CORE_COUNT="$((AVAILABLE_CPU_CORE_COUNT-1))"
-    if [[ $CPU_CORE_COUNT -gt 16 ]]; then
-        CPU_CORE_COUNT=16
-    fi
-fi
-
-echo "> Using ${CPU_CORE_COUNT} CPU cores..."
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-smp" "${CPU_CORE_COUNT}")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--vcpu" "${CPU_CORE_COUNT}")
-fi
-
-if [ "$RAM_SIZE" = "auto" ]; then
-    FREE_RAM="$(free -g | grep 'Mem: ' | tr -s ' ' | cut -d ' ' -f4)"
-    RAM_SIZE_GB="$((FREE_RAM-1))"
-    if [[ $RAM_SIZE_GB -gt 16 ]]; then
-        RAM_SIZE_GB=16
-    fi
-    RAM_SIZE="${RAM_SIZE_GB}G"
-fi
-
-echo "> Using ${RAM_SIZE} of RAM..."
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-m" "${RAM_SIZE}")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    RAM_SIZE_GB="$(numfmt --from=si "${RAM_SIZE}" --to-unit=1M)"
-    VIRT_INSTALL_PARAMS+=("--memory" "${RAM_SIZE_GB}")
-fi
-
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-mem-prealloc") # for virt-install this enabled by default
 fi
@@ -140,41 +112,6 @@ QEMU_PARAMS+=("-boot" "menu=on")
 QEMU_PARAMS+=("-boot" "once=d")
 QEMU_PARAMS+=("-k" "en-us")
 
-if [ "$VM_INSTALL" = true ]; then
-    if [ "$VM_START_MODE" = "qemu" ]; then
-        QEMU_PARAMS+=("-drive" "file=${INSTALL_IMG},index=1,media=cdrom")
-    elif [ "$VM_START_MODE" = "virt-install" ]; then
-        VIRT_INSTALL_PARAMS+=("--cdrom" "${INSTALL_IMG}")
-    fi
-fi
-
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-drive" "file=${HELPER_ISO},index=2,media=cdrom")
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${HELPER_ISO}")
-fi
-
-if ! sudo virsh net-list | grep default | grep --quiet active; then
-    sudo virsh net-start default
-fi
-
-INTERFACE_NAME="$(sudo cat /var/lib/libvirt/dnsmasq/default.conf | grep "^interface=" | cut -d'=' -f2-)"
-NETWORK="$(sudo ip route | grep " ${INTERFACE_NAME} " | cut -d' ' -f1)"
-
-if [ "$VM_START_MODE" = "qemu" ]; then
-    QEMU_PARAMS+=("-net" "nic,model=e1000,macaddr=${MAC_ADDRESS}" "-net" "bridge,br=virbr0")
-    #QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")
-    #QEMU_PARAMS+=("-device" "virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS}")
-    #-net user,hostfwd=tcp::13389-:3389 -net nic
-elif [ "$VM_START_MODE" = "virt-install" ]; then
-    VIRT_INSTALL_PARAMS+=("--network" "network=default,model=e1000,mac=${MAC_ADDRESS}")
-    #VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/interface[type=network]/mac@address='${MAC_ADDRESS}'")
-    #VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/interface[0]/source@network=default")
-    #if ! sudo virsh net-list | grep default | grep --quiet active; then
-    #    sudo virsh net-start default
-    #fi
-fi
-
 QEMU_PARAMS+=("-device" "ich9-intel-hda")
 QEMU_PARAMS+=("-device" "hda-output")
 QEMU_PARAMS+=("-device" "pci-bridge,addr=12.0,chassis_nr=2,id=head.2")
@@ -183,8 +120,100 @@ QEMU_PARAMS+=("-device" "pci-bridge,addr=12.0,chassis_nr=2,id=head.2")
 VIRT_INSTALL_PARAMS+=("--virt-type" "kvm")
 VIRT_INSTALL_PARAMS+=("--os-variant" "win10")
 VIRT_INSTALL_PARAMS+=("--arch=x86_64")
-#VIRT_INSTALL_PARAMS+=("--unattended")
 
+#####################################################################################
+################################# Set up networking #################################
+#####################################################################################
+if [ "$NETWORK_MODE" == "bridged" ]; then
+    echo "> Using network mode ${NETWORK_MODE}..."
+    if ! sudo virsh net-list | grep default | grep --quiet active; then
+        sudo virsh net-start default
+    fi
+
+    if [ "$MAC_ADDRESS" = "auto" ]; then
+        MAC_ADDRESS=$(printf '52:54:BE:EF:%02X:%02X\n' $((RANDOM%256)) $((RANDOM%256)))
+    fi
+    echo "> Using MAC address: ${MAC_ADDRESS}..."
+
+    INTERFACE_NAME="$(sudo cat /var/lib/libvirt/dnsmasq/default.conf | grep "^interface=" | cut -d'=' -f2-)"
+    NETWORK="$(sudo ip route | grep " ${INTERFACE_NAME} " | cut -d' ' -f1)"
+
+    if [ "$VM_START_MODE" = "qemu" ]; then
+        QEMU_PARAMS+=("-net" "nic,model=e1000,macaddr=${MAC_ADDRESS}" "-net" "bridge,br=virbr0")
+        #QEMU_PARAMS+=("-netdev" "type=tap,id=net0,ifname=tap0,script=${VM_FILES_DIR}/network-scripts/tap_ifup,downscript=${VM_FILES_DIR}/network-scripts/tap_ifdown,vhost=on")
+        #QEMU_PARAMS+=("-device" "virtio-net-pci,netdev=net0,addr=19.0,mac=${MAC_ADDRESS}")
+        #-net user,hostfwd=tcp::13389-:3389 -net nic
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        VIRT_INSTALL_PARAMS+=("--network" "network=default,model=e1000,mac=${MAC_ADDRESS}")
+        #VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/interface[type=network]/mac@address='${MAC_ADDRESS}'")
+        #VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/interface[0]/source@network=default")
+        #if ! sudo virsh net-list | grep default | grep --quiet active; then
+        #    sudo virsh net-start default
+        #fi
+    fi
+else
+    echo "Networking will not be enabled for this VM..."
+fi
+
+#####################################################################################
+################################### Set CPU Cores ###################################
+#####################################################################################
+if [ "$CPU_CORE_COUNT" = "auto" ]; then
+    AVAILABLE_CPU_CORE_COUNT="$(nproc)"
+    CPU_CORE_COUNT="$((AVAILABLE_CPU_CORE_COUNT-1))"
+    if [[ $CPU_CORE_COUNT -gt 16 ]]; then
+        CPU_CORE_COUNT=16
+    fi
+fi
+echo "> Using ${CPU_CORE_COUNT} CPU cores..."
+if [ "$VM_START_MODE" = "qemu" ]; then
+    QEMU_PARAMS+=("-smp" "${CPU_CORE_COUNT}")
+elif [ "$VM_START_MODE" = "virt-install" ]; then
+    VIRT_INSTALL_PARAMS+=("--vcpu" "${CPU_CORE_COUNT}")
+fi
+
+#####################################################################################
+################################### Set RAM size ####################################
+#####################################################################################
+if [ "$RAM_SIZE" = "auto" ]; then
+    FREE_RAM="$(free -g | grep 'Mem: ' | tr -s ' ' | cut -d ' ' -f7)"
+    RAM_SIZE_GB="$((FREE_RAM-1))"
+    if [[ $RAM_SIZE_GB -gt 16 ]]; then
+        RAM_SIZE_GB=16
+    fi
+    RAM_SIZE="${RAM_SIZE_GB}G"
+fi
+echo "> Using ${RAM_SIZE} of RAM..."
+if [ "$VM_START_MODE" = "qemu" ]; then
+    QEMU_PARAMS+=("-m" "${RAM_SIZE}")
+elif [ "$VM_START_MODE" = "virt-install" ]; then
+    RAM_SIZE_GB="$(numfmt --from=si "${RAM_SIZE}" --to-unit=1M)"
+    VIRT_INSTALL_PARAMS+=("--memory" "${RAM_SIZE_GB}")
+fi
+
+#####################################################################################
+############################## Set install media (ISO) ##############################
+#####################################################################################
+if [ "$VM_ACTION" = "install" ]; then
+    if [ "$VM_START_MODE" = "qemu" ]; then
+        QEMU_PARAMS+=("-drive" "file=${INSTALL_IMG},index=1,media=cdrom")
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        VIRT_INSTALL_PARAMS+=("--cdrom" "${INSTALL_IMG}")
+    fi
+fi
+
+#####################################################################################
+################################## Set helper ISO ###################################
+#####################################################################################
+if [ "$VM_START_MODE" = "qemu" ]; then
+    QEMU_PARAMS+=("-drive" "file=${HELPER_ISO},index=2,media=cdrom")
+elif [ "$VM_START_MODE" = "virt-install" ]; then
+    VIRT_INSTALL_PARAMS+=("--disk" "device=cdrom,path=${HELPER_ISO}")
+fi
+
+#####################################################################################
+########################### Set/create OS install drive #############################
+#####################################################################################
 if [[ ${DRIVE_IMG} == /dev/* ]]; then
     echo "> Using a physical OS drive..."
     if [ "$VM_START_MODE" = "qemu" ]; then
@@ -195,9 +224,13 @@ if [[ ${DRIVE_IMG} == /dev/* ]]; then
     #QEMU_PARAMS+=("-drive" "file=/dev/sda,if=virtio" "-drive" "file=/dev/sdb,if=virtio" "-drive" "file=/dev/sdc,if=virtio" "-drive" "file=/dev/sdd,if=virtio" "-snapshot")
 elif [[ ${DRIVE_IMG} == *.img ]]; then
     echo "> Using a virtual OS drive..."
+    if [ "$VM_ACTION" = "install" ] && [ -f "${DRIVE_IMG}" ]; then
+        echo "> Removing old virtual disk..."
+        sudo rm -rf "${DRIVE_IMG}"
+    fi
     if [ ! -f "${DRIVE_IMG}" ]; then
         echo "> Creating a virtual disk for the VM..."
-        qemu-img create -f raw "${DRIVE_IMG}" "${VM_DISK_SIZE}"
+        qemu-img create -f raw "${DRIVE_IMG}" "${VM_DISK_SIZE}" > /dev/null
         sudo chown "$(whoami):$(id -gn "$(whoami)")" "${DRIVE_IMG}"
     fi
     if [ "$VM_START_MODE" = "qemu" ]; then
@@ -205,18 +238,16 @@ elif [[ ${DRIVE_IMG} == *.img ]]; then
     elif [ "$VM_START_MODE" = "virt-install" ]; then
         VIRT_INSTALL_PARAMS+=("--disk" "${DRIVE_IMG}")
     fi
+    OS_DRIVE_SIZE="$(sudo ls -l --b=G "${DRIVE_IMG}" | cut -d " " -f5)"
+    echo "> Virtual OS drive has ${OS_DRIVE_SIZE} of storage."
 else
     echo "> Error: It appears that no proper OS drive (image) has been provided. Check your 'DRIVE_IMG' var: '${DRIVE_IMG}'"
     exit
 fi
 
-if [ ! -f "${OVMF_VARS_VM}" ] || [ "$VM_INSTALL" = true ]; then
-    echo "> Creating fresh OVMF_VARS copy for this VM..."
-    sudo rm -f "${OVMF_VARS_VM}"
-    sudo cp "${OVMF_VARS}" "${OVMF_VARS_VM}"
-    sudo chown "$(whoami):$(id -gn "$(whoami)")" "${OVMF_VARS_VM}"
-fi
-
+#####################################################################################
+################ Figure out if optirun or DRI_PRIME should be used ##################
+#####################################################################################
 if sudo which optirun &> /dev/null && sudo optirun echo > /dev/null ; then
     OPTIRUN_PREFIX="optirun "
     DRI_PRIME_PREFIX=""
@@ -226,39 +257,13 @@ else
     if [ "$SUPPORTS_DRI_PRIME" = true ]; then
         DRI_PRIME_PREFIX="DRI_PRIME=1 "
     else
-        echo "> Warning: Bumblebee is not available or doesn't work properly. Continuing anyway..."
+        echo "> Bumblebee is not available..."
     fi
 fi
 
-echo "> Loading vfio-pci kernel module..."
-sudo modprobe vfio-pci
-
-if [ "$USE_LOOKING_GLASS" = true ]; then
-    echo "> Using Looking Glass..."
-    echo "> Calculating required buffer size for ${LOOKING_GLASS_MAX_SCREEN_WIDTH}x${LOOKING_GLASS_MAX_SCREEN_HEIGHT} for Looking Glass..."
-    UNROUNDED_BUFFER_SIZE=$((($LOOKING_GLASS_MAX_SCREEN_WIDTH * $LOOKING_GLASS_MAX_SCREEN_HEIGHT * 4 * 2)/1024/1024+10))
-    BUFFER_SIZE=1
-    while [[ $BUFFER_SIZE -le $UNROUNDED_BUFFER_SIZE ]]; do
-        BUFFER_SIZE=$(($BUFFER_SIZE*2))
-    done
-    LOOKING_GLASS_BUFFER_SIZE="${BUFFER_SIZE}"
-    echo "> Looking Glass buffer size set to: ${LOOKING_GLASS_BUFFER_SIZE}MB"
-    if [ "$VM_START_MODE" = "qemu" ]; then
-        QEMU_PARAMS+=("-device" "ivshmem-plain,memdev=ivshmem,bus=pcie.0")
-        QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}M")
-    elif [ "$VM_START_MODE" = "virt-install" ]; then
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/@name=looking-glass")
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/model/@type=ivshmem-plain")
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size=${LOOKING_GLASS_BUFFER_SIZE}")
-        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size/@unit=M")
-    fi
-    #sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
-    #sudo bash -c "echo 'f /dev/shm/looking-glass 0660 qemu kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
-    #sudo systemd-tmpfiles --create --prefix=/dev/shm/looking-glass
-else
-    echo "> Not using Looking Glass..."
-fi
-
+#####################################################################################
+########################## Set up samba share directory #############################
+#####################################################################################
 if [ -z "$SMB_SHARE_FOLDER" ]; then
     echo "> Not using SMB share..."
 else
@@ -266,7 +271,11 @@ else
     QEMU_PARAMS+=("-net" "user,smb=${SMB_SHARE_FOLDER}")
 fi
 
+#####################################################################################
+####################### Set parameters for dGPU passthrough #########################
+#####################################################################################
 if [ "$DGPU_PASSTHROUGH" != false ]; then
+    DGPU_PASSTHROUGH=false
     availableGpusIds="$(sudo ${OPTIRUN_PREFIX}lshw -C display -businfo | grep 'pci@' | cut -d'@' -f2 | cut -d' ' -f1 | cut -d':' -f2-)"
     if [ "$DGPU_PCI_ADDRESS" = "auto" ]; then
         DGPU_PCI_ADDRESS=""
@@ -281,14 +290,17 @@ if [ "$DGPU_PASSTHROUGH" != false ]; then
 
     if [ "$(echo -e "$availableGpusIds" | wc -l)" -le 1 ]; then
         echo "> Not using dGPU passthrough because single GPU passthrough is not supported yet..."
-    if [ "$DGPU_PCI_ADDRESS" != "" ]; then
+    elif [ "$DGPU_PCI_ADDRESS" != "" ]; then
+        DGPU_PASSTHROUGH=true
         echo "> Using dGPU passthrough..."
 
         if [ "$HOST_DGPU_DRIVER" = "auto" ]; then
             HOST_DGPU_DRIVER="$(sudo ${OPTIRUN_PREFIX}lspci -s "$DGPU_PCI_ADDRESS" -vv | grep driver | cut -d':' -f2 | cut -d' ' -f2-)"
         fi
 
-        echo "> dGPU is: '$DGPU_PCI_ADDRESS' with driver '$HOST_DGPU_DRIVER'"
+        DGPU_INFO="$(sudo lspci | grep "$DGPU_PCI_ADDRESS" | cut -d' ' -f2-)"
+        echo "> dGPU is: $DGPU_INFO"
+        echo "> dGPU dirver is $HOST_DGPU_DRIVER"
         
         echo "> Retrieving and parsing DGPU IDs..."
         DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
@@ -310,12 +322,6 @@ if [ "$DGPU_PASSTHROUGH" != false ]; then
             exit 1
         fi
 
-        echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
-        driver unbind "${DGPU_PCI_ADDRESS}"
-        echo "> Binding dGPU to VFIO driver..."
-        driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
-        #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
-        # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
         if [ "$VM_START_MODE" = "qemu" ]; then
             QEMU_PARAMS+=("-device" "ioh3420,bus=pcie.0,addr=1c.0,multifunction=on,port=1,chassis=1,id=pci.1") # DGPU root port
         elif [ "$VM_START_MODE" = "virt-install" ]; then
@@ -353,9 +359,14 @@ else
     echo "> Not using dGPU passthrough..."
 fi
 
-if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
+##############################################################################################
+### If mediated iGPU passthrough is enabled, check if vGPU exists or if one can be created ###
+##############################################################################################
+DMA_BUF_AVAILABLE=false
+if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = "auto" ]; then
 
     if [ "$IGPU_PCI_ADDRESS" = "auto" ]; then
+        IGPU_PCI_ADDRESS=""
         availableGpusIds="$(sudo ${OPTIRUN_PREFIX}lshw -C display -businfo | grep 'pci@' | cut -d'@' -f2 | cut -d' ' -f1 | cut -d':' -f2-)"
 
         while IFS= read -r pciAddress; do
@@ -367,10 +378,7 @@ if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
         done <<< "$availableGpusIds"
     fi
     
-    if [ "$IGPU_PCI_ADDRESS" != "auto" ]; then
-        echo "> Using mediated iGPU passthrough..."
-        echo "> iGPU is: $IGPU_PCI_ADDRESS"
-
+    if [ "$IGPU_PCI_ADDRESS" != "" ]; then
         vgpu init # load required kernel modules
 
         # FIXME: There is a bug in Linux that prevents creating new vGPUs without rebooting after removing one. 
@@ -381,58 +389,18 @@ if [ "$SHARE_IGPU" = true ] || [ "$SHARE_IGPU" = auto ]; then
             echo "> Creating a vGPU for mediated iGPU passthrough..."
             VGPU_UUID="$(vgpu create "${IGPU_PCI_ADDRESS}")"
             if [ "$?" = "1" ]; then
-                echo "> Failed creating a vGPU. (You can try again. If you still get this error, you have to reboot. This seems to be a bug in Linux.)"
+                echo "> [Error] Failed creating a vGPU. (You can try again. If you still get this error, you have to reboot. This seems to be a bug in Linux.)"
                 echo "> Continuing without mediated iGPU passthrough..."
                 VGPU_UUID=""
             fi
         fi
-        
+
         if [ "$VGPU_UUID" != "" ]; then
-            # TODO: same as for iGPU
-            if [ "$VM_START_MODE" = "qemu" ]; then
-
-                if [ "$USE_DMA_BUF" = true ]; then
-                    echo "> Using dma-buf..."
-                    QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
-                    DMA_BUF_PARAM=",display=on,x-igd-opregion=on"
-                else
-                    echo "> Not using dma-buf..."
-                    DMA_BUF_PARAM=""
-                fi
-
-                if [ -z "$IGPU_ROM" ]; then
-                    echo "> Not using iGPU vBIOS override..."
-                    #IGPU_ROM_PARAM=",rom.bar=on"
-                else
-                    echo "> Using iGPU vBIOS override..."
-                    IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
-                fi
-
-                QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=05.0,sysfsdev=/sys/bus/mdev/devices/${VGPU_UUID}${IGPU_ROM_PARAM}${DMA_BUF_PARAM}") # GVT-G
-            elif [ "$VM_START_MODE" = "virt-install" ]; then
-                if [ "$USE_DMA_BUF" = true ]; then
-                    echo "> Using dma-buf..."
-                    #QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
-                    QEMU_PARAMS+=("-set" "device.hostdev1.x-igd-opregion=on")
-                    GVTG_DISPLAY_STATE="on"
-                else
-                    echo "> Not using dma-buf..."
-                    GVTG_DISPLAY_STATE="off"
-                fi
-
-                if [ -z "$IGPU_ROM" ]; then
-                    echo "> Not using iGPU vBIOS override..."
-                    IGPU_ROM_PARAM=",rom.bar=on"
-                fi
-                VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
-                VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/@model=vfio-pci")
-                VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
-                
-                if [ ! -z "$IGPU_ROM" ]; then
-                    echo "> Using iGPU vBIOS override..."
-                    VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
-                fi
-            fi
+            IGPU_INFO="$(sudo lspci | grep "$IGPU_PCI_ADDRESS" | cut -d' ' -f2-)"
+            echo "> iGPU is: $IGPU_INFO"
+            echo "> iGPU dirver is: $HOST_DGPU_DRIVER"
+            echo "> UUID of vGPU is: $VGPU_UUID"
+            DMA_BUF_AVAILABLE=true
         fi
     else
         echo "> No iGPU found. - Not using mediated iGPU passthrough..."
@@ -441,19 +409,108 @@ else
     echo "> Not using mediated iGPU passthrough..."
 fi
 
-if [ "$USE_SPICE" = true ]; then
-    echo "> Using spice on port ${SPICE_PORT}..."
-    #QEMU_PARAMS+=("-spice" "port=${SPICE_PORT},addr=127.0.0.1,disable-ticketing") #Spice
+#####################################################################################
+############################ Load display output plugin #############################
+#####################################################################################
+if [ "$DISPLAY_MODE" != "" ]; then
+    echo "> Loading display-mode-${DISPLAY_MODE} plugin..."
+    source "${COMMON_UTILS_PLUGINS_DIR}/display-mode-${DISPLAY_MODE}"
+else
+    echo "> [Error] No display mode provided..."
+fi
+
+#########################################################################################################
+### If there is a vGPU for mediated iGPU passthrough, set parameters for iGPU passthrough and dma-buf ###
+#########################################################################################################
+if [ "$VGPU_UUID" != "" ]; then
     if [ "$VM_START_MODE" = "qemu" ]; then
-        QEMU_PARAMS+=("-spice" "port=${SPICE_PORT},addr=127.0.0.1,disable-ticketing") #Spice
+
+        if [ "$USE_DMA_BUF" = true ]; then
+            echo "> Using dma-buf..."
+            QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+            DMA_BUF_PARAM=",display=on,x-igd-opregion=on"
+        else
+            echo "> Not using dma-buf..."
+            DMA_BUF_PARAM=""
+        fi
+
+        if [ -z "$IGPU_ROM" ]; then
+            echo "> Not using iGPU vBIOS override..."
+            #IGPU_ROM_PARAM=",rom.bar=on"
+        else
+            echo "> Using iGPU vBIOS override..."
+            IGPU_ROM_PARAM=",romfile=${IGPU_ROM}"
+        fi
+
+        QEMU_PARAMS+=("-device" "vfio-pci,bus=pcie.0,addr=05.0,sysfsdev=/sys/bus/mdev/devices/${VGPU_UUID}${IGPU_ROM_PARAM}${DMA_BUF_PARAM}") # GVT-G
     elif [ "$VM_START_MODE" = "virt-install" ]; then
-        VIRT_INSTALL_PARAMS+=("--channel" "spicevmc,target.address=127.0.0.1:${SPICE_PORT}")
-        #VIRT_INSTALL_PARAMS+=("--graphics" "spice,port=${SPICE_PORT}")
+        if [ "$USE_DMA_BUF" = true ]; then
+            echo "> Using dma-buf..."
+            #QEMU_PARAMS+=("-display" "egl-headless") #"-display" "gtk,gl=on" # DMA BUF Display
+            QEMU_PARAMS+=("-set" "device.hostdev1.x-igd-opregion=on")
+            GVTG_DISPLAY_STATE="on"
+        else
+            echo "> Not using dma-buf..."
+            GVTG_DISPLAY_STATE="off"
+        fi
+
+        if [ -z "$IGPU_ROM" ]; then
+            echo "> Not using iGPU vBIOS override..."
+            IGPU_ROM_PARAM=",rom.bar=on"
+        fi
+        VIRT_INSTALL_PARAMS+=("--hostdev" "type=mdev,alias.name=hostdev1,address.domain=0000,address.bus=0,address.slot=2,address.function=0,address.type=pci,address.multifunction=on${IGPU_ROM_PARAM}")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/@model=vfio-pci")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/source/address/@uuid=${VGPU_UUID}")
+        
+        if [ ! -z "$IGPU_ROM" ]; then
+            echo "> Using iGPU vBIOS override..."
+            VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/hostdev[2]/rom/@file=${IGPU_ROM}")
+        fi
     fi
+fi
+
+#####################################################################################
+############################### Set Spice parameters ################################
+#####################################################################################
+if [ "$USE_SPICE" = true ]; then
+    if sudo lsof -i ":${SPICE_PORT}" | grep --quiet LISTEN; then
+        echo "[Error] Something is blocking the SPICE_PORT (${SPICE_PORT})! Change it in your config or kill whatever is blocking it."
+    else
+        echo "> Using spice on port ${SPICE_PORT}..."
+        #QEMU_PARAMS+=("-spice" "port=${SPICE_PORT},addr=127.0.0.1,disable-ticketing") #Spice
+        if [ "$VM_START_MODE" = "qemu" ]; then
+            QEMU_PARAMS+=("-spice" "port=${SPICE_PORT},addr=127.0.0.1,disable-ticketing") #Spice
+        elif [ "$VM_START_MODE" = "virt-install" ]; then
+            VIRT_INSTALL_PARAMS+=("--channel" "spicevmc,target.address=127.0.0.1:${SPICE_PORT}")
+            #VIRT_INSTALL_PARAMS+=("--graphics" "spice,port=${SPICE_PORT}")
+        fi
+    fi
+    function waitForSpice() {
+        while true; do
+            if sudo lsof -i ":${SPICE_PORT}" | grep --quiet LISTEN &> /dev/null; then
+                break
+            fi
+            sleep 1
+        done
+    }
 else
     echo "> Not using Spice..."
 fi
 
+#####################################################################################
+###################### Check if spice client should be started ######################
+#####################################################################################
+if [ "$USE_SPICE_CLIENT" = "auto"  ] && [ "$USE_SPICE" = true ]; then
+    if [ "$VM_ACTION" = "install" ]; then
+        USE_SPICE_CLIENT=true
+    elif [ "$USE_LOOKING_GLASS" = true ]; then
+        USE_SPICE_CLIENT=true
+    fi
+fi
+
+#####################################################################################
+############ Set QXL parameters if loaded display output plugin wants it ############
+#####################################################################################
 if [ "$USE_QXL" = true ]; then
     echo "> Using QXL..."
     if [ "$VM_START_MODE" = "qemu" ]; then
@@ -461,11 +518,63 @@ if [ "$USE_QXL" = true ]; then
         #QEMU_PARAMS+=("-vga" "qxl")
     elif [ "$VM_START_MODE" = "virt-install" ]; then
         VIRT_INSTALL_PARAMS+=("--video" "qxl")
+        #-video qxl --channel spicevmc
     fi
 else
     echo "> Not using QXL..."
 fi
-#-video qxl --channel spicevmc
+
+#####################################################################################
+####### Set Looking Glass parameters if loaded display output plugin wants it #######
+#####################################################################################
+if [ "$USE_LOOKING_GLASS" = true ]; then
+    echo "> Using Looking Glass..."
+    echo "> Calculating required buffer size for ${LOOKING_GLASS_MAX_SCREEN_WIDTH}x${LOOKING_GLASS_MAX_SCREEN_HEIGHT} for Looking Glass..."
+    UNROUNDED_BUFFER_SIZE=$((($LOOKING_GLASS_MAX_SCREEN_WIDTH * $LOOKING_GLASS_MAX_SCREEN_HEIGHT * 4 * 2)/1024/1024+10))
+    BUFFER_SIZE=1
+    while [[ $BUFFER_SIZE -le $UNROUNDED_BUFFER_SIZE ]]; do
+        BUFFER_SIZE=$(($BUFFER_SIZE*2))
+    done
+    LOOKING_GLASS_BUFFER_SIZE="${BUFFER_SIZE}"
+    echo "> Looking Glass buffer size set to: ${LOOKING_GLASS_BUFFER_SIZE}MB"
+    if [ "$VM_START_MODE" = "qemu" ]; then
+        QEMU_PARAMS+=("-device" "ivshmem-plain,memdev=ivshmem,bus=pcie.0")
+        QEMU_PARAMS+=("-object" "memory-backend-file,id=ivshmem,share=on,mem-path=/dev/shm/looking-glass,size=${LOOKING_GLASS_BUFFER_SIZE}M")
+    elif [ "$VM_START_MODE" = "virt-install" ]; then
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/@name=looking-glass")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/model/@type=ivshmem-plain")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size=${LOOKING_GLASS_BUFFER_SIZE}")
+        VIRT_INSTALL_PARAMS+=("--xml" "xpath.set=./devices/shmem/size/@unit=M")
+    fi
+    #sudo bash -c "echo '#Type Path Mode UID GID Age Argument' > /etc/tmpfiles.d/10-looking-glass.conf"
+    #sudo bash -c "echo 'f /dev/shm/looking-glass 0660 qemu kvm - ' >> /etc/tmpfiles.d/10-looking-glass.conf"
+    #sudo systemd-tmpfiles --create --prefix=/dev/shm/looking-glass
+
+    function autoConnectLookingGlass() {
+        while true; do 
+            VM_IP="$(sudo nmap -sn -n ${NETWORK} -T5 | grep "MAC Address: ${MAC_ADDRESS}" -B 2 | head -1 | rev | cut -d' ' -f1 | rev)"
+            if [ "$VM_IP" != "" ]; then
+                while true; do
+                    if nc -vz "$VM_IP" 3389 &> /dev/null; then
+                        sleep 5
+                        echo "> Starting the Looking Glass client to connect with the VM..."
+                        sudo -u "$(logname)" "${THIRDPARTY_DIR}/LookingGlass/client/build/looking-glass-client" -p "${SPICE_PORT}" 2>&1 | grep '^\[E\]' &
+                        break
+                    fi
+                    sleep 1
+                done
+                break
+            fi
+            sleep 1
+        done
+    }
+else
+    echo "> Not using Looking Glass..."
+fi
+
+#####################################################################################
+########################## Set up fake battery if enabled ###########################
+#####################################################################################
 if [ "$USE_FAKE_BATTERY" = true ]; then
     echo "> Using fake battery..."
     if [ ! -f "${VM_FILES_DIR}/fake-battery.aml" ]; then
@@ -481,6 +590,20 @@ else
     echo "> Not using fake battery..."
 fi
 
+
+#####################################################################################
+########### Create copy of OVMF_VARS_VM which is required for UEFI VMs  #############
+#####################################################################################
+if [ ! -f "${OVMF_VARS_VM}" ] || [ "$VM_ACTION" = "install" ]; then
+    echo "> Creating fresh OVMF_VARS copy for this VM..."
+    sudo rm -f "${OVMF_VARS_VM}"
+    sudo cp "${OVMF_VARS}" "${OVMF_VARS_VM}"
+    sudo chown "$(whoami):$(id -gn "$(whoami)")" "${OVMF_VARS_VM}"
+fi
+
+#####################################################################################
+####################### Patch OVMF with vBIOS ROM if enabled ########################
+#####################################################################################
 if [ "$PATCH_OVMF_WITH_VROM" = true ]; then
     PATCHED_OVMF_FILES_DIR="${VM_FILES_DIR}/patched-ovmf-files"
     if [ "$DGPU_ROM" != "" ]; then
@@ -500,7 +623,7 @@ if [ "$PATCH_OVMF_WITH_VROM" = true ]; then
             sudo rm -rf "${PATCHED_OVMF_FILES_DIR}/tmp-build"
         fi
         OVMF_CODE="${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_CODE.fd"
-        if [ "$VM_INSTALL" = true ]; then
+        if [ "$VM_ACTION" = "install" ]; then
             echo "> Creating fresh copy of patched OVMF VARS..."
             rm -f "${OVMF_VARS_VM}"
             sudo cp "${PATCHED_OVMF_FILES_DIR}/${DGPU_ROM_NAME}_OVMF_VARS.fd" "${OVMF_VARS_VM}"
@@ -513,6 +636,9 @@ else
     echo "> Not using patched OVMF..."
 fi
 
+#####################################################################################
+############################### Set OVMF parameters #################################
+#####################################################################################
 if [ "$VM_START_MODE" = "qemu" ]; then
     QEMU_PARAMS+=("-drive" "if=pflash,format=raw,readonly=on,file=${OVMF_CODE}")
     QEMU_PARAMS+=("-drive" "if=pflash,format=raw,file=${OVMF_VARS_VM}")
@@ -520,6 +646,9 @@ elif [ "$VM_START_MODE" = "virt-install" ]; then
     VIRT_INSTALL_PARAMS+=("--boot" "loader=${OVMF_CODE},loader.readonly=yes,loader.type=pflash,nvram.template=${OVMF_VARS_VM},loader_secure=no")
 fi
 
+#####################################################################################
+########################## Set up USB device passthrough ############################
+#####################################################################################
 QEMU_PARAMS+=("-usb")
 if [ -z "$USB_DEVICES" ]; then
     echo "> Not using USB passthrough..."
@@ -533,6 +662,9 @@ else
     done
 fi
 
+#####################################################################################
+############################### Set up input method #################################
+#####################################################################################
 if [ "$VIRTUAL_INPUT_TYPE" = "virtio" ]; then
     echo "> Using virtual input method 'virtio' for keyboard/mouse input..."
     QEMU_PARAMS+=("-device" "virtio-keyboard-pci,bus=head.2,addr=03.0,display=video.2")
@@ -544,66 +676,75 @@ else
     echo "> Not using virtual input method for keyboard/mouse input..."
 fi
 
-RDP_USER=Administrator
-RDP_PASSWORD=admin
+#####################################################################################
+################################### Set up RDP ######################################
+#####################################################################################
+if [ "$USE_RDP" = true ] && [ "$NETWORK_MODE" != "none" ]; then
+    echo "> Using RDP..."
+    RDP_USER=Administrator
+    RDP_PASSWORD=admin
+    # Run it once because the first time it prints a useless message instead of actually encrypting
+    echo "$RDP_PASSWORD" | remmina --encrypt-password &> /dev/null
+    # Run it again, hoping it always works the second time
+    RDP_PASSWORD_ENCRYPTED="$(echo "$RDP_PASSWORD" | remmina --encrypt-password | grep 'Encrypted password: ' | cut -d':' -f2- | tr -d ' ')"
 
-# Run it once because the first time it prints a useless message instead of actually encrypting
-echo "$RDP_PASSWORD" | remmina --encrypt-password &> /dev/null
+    function autoConnectRdp() {
+        while true; do 
+            VM_IP="$(sudo nmap -sn -n ${NETWORK} -T5 | grep "MAC Address: ${MAC_ADDRESS}" -B 2 | head -1 | rev | cut -d' ' -f1 | rev)"
+            if [ "$VM_IP" != "" ]; then
+                echo ""
+                echo "> The IP address of the VM is: ${VM_IP}"
+                echo ""
+                echo "> Waiting for RDP to be available in the VM..."
+                while true; do
+                    if nc -vz "$VM_IP" 3389 &> /dev/null; then
+                        echo "> Opening Remmina to start an RDP connection with the VM..."
+                        remmina -c "rdp://${RDP_USER}:${RDP_PASSWORD_ENCRYPTED}@${VM_IP}" &> /dev/null &
+                        break
+                    fi
+                    sleep 1
+                done
+                break
+            fi
+            sleep 1
+        done
+    }
+else
+    echo "> Not using RDP..."
+fi
 
-# Run it again, hoping it always works the second time
-RDP_PASSWORD_ENCRYPTED="$(echo "$RDP_PASSWORD" | remmina --encrypt-password | grep 'Encrypted password: ' | cut -d':' -f2- | tr -d ' ')"
+#####################################################################################
+################# Load vfio-pci and bind dGPU to vfio-pci driver ####################
+#####################################################################################
+if [ "$DRY_RUN" = false ]; then
+    if [ "$DGPU_PASSTHROUGH" = true ] || [ "$SHARE_IGPU" = true ]; then
+        echo "> Loading vfio-pci kernel module..."
+        sudo modprobe vfio-pci
+    fi
 
-function autoConnectRdp() {
-    while true; do 
-        VM_IP="$(sudo nmap -sn -n ${NETWORK} -T5 | grep "MAC Address: ${MAC_ADDRESS}" -B 2 | head -1 | rev | cut -d' ' -f1 | rev)"
-        if [ "$VM_IP" != "" ]; then
-            echo ""
-            echo "> The IP address of the VM is: ${VM_IP}"
-            echo ""
-            echo "> Waiting for RDP to be available in the VM..."
-            while true; do
-                if nc -vz "$VM_IP" 3389 &> /dev/null; then
-                    echo "> Opening Remmina to start an RDP connection with the VM..."
-                    remmina -c "rdp://${RDP_USER}:${RDP_PASSWORD_ENCRYPTED}@${VM_IP}" &> /dev/null &
-                    #if [ "$USE_LOOKING_GLASS" = true ]; then
-                    #    echo "> Starting the Looking Glass client..."
-                    #    sudo -u "$(logname)" "${THIRDPARTY_DIR}/LookingGlass/client/build/looking-glass-client" -p "${SPICE_PORT}" 2>&1 | grep '^\[E\]' &
-                    #fi
-                    break
-                fi
-            done
-            break
-        fi
-        sleep 1
-    done
-}
+    if [ "$DGPU_PASSTHROUGH" = true ]; then
+        echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
+        driver unbind "${DGPU_PCI_ADDRESS}"
+        echo "> Binding dGPU to VFIO driver..."
+        driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
+        #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
+        # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
+    fi
+fi
 
-#echo "> Starting RDP autoconnect background task..."
-#autoConnectRdp &
-
-if [ "$VM_INSTALL" = true ]; then
+if [ "$VM_ACTION" = "install" ]; then
     echo "> Deleting VM if it already exists..."
     sudo virsh destroy --domain "${VM_NAME}" &> /dev/null
     sudo virsh undefine --domain "${VM_NAME}" --nvram &> /dev/null
 fi
 
-
-
-if [ "$USE_SPICE_CLIENT" = "auto"  ] && [ "$USE_SPICE" = true ]; then
-    if [ "$VM_INSTALL" = true ]; then
-        USE_SPICE_CLIENT=true
-    elif [ "$USE_LOOKING_GLASS" = true ]; then
-        USE_SPICE_CLIENT=false
-    fi
-fi
-
-if [ "$DRY_RUN" = false ] && [ "$VM_INSTALL" = true ]; then
-    echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
-fi
+#####################################################################################
+########################## Start a few background tasks #############################
+#####################################################################################
 if [ "$VM_START_MODE" = "qemu" ]; then
-
     if [ "$DRY_RUN" = false ]; then
-        if [ "$VM_INSTALL" = true ]; then
+        if [ "$VM_ACTION" = "install" ]; then
+            echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
             QEMU_PARAMS+=("-monitor" "unix:/tmp/${VM_NAME}-monitor,server,nowait")
             bash -c "for i in {1..30}; do echo 'sendkey home' | sudo socat - 'UNIX-CONNECT:/tmp/${VM_NAME}-monitor'; sleep 1; done" &> /dev/null &
         fi
@@ -612,10 +753,29 @@ if [ "$VM_START_MODE" = "qemu" ]; then
             echo "> Starting the spice client at localhost:${SPICE_PORT}..."
             bash -c "sleep 2; spicy -h localhost -p ${SPICE_PORT}" &
         fi
-
-        echo "> Starting the Virtual Machine using qemu..."
     fi
+elif [ "$VM_START_MODE" = "virt-install" ]; then
+    if [ "$DRY_RUN" = false ]; then
+        if [ "$VM_ACTION" = "install" ]; then
+            echo "> Repeatedly sending keystrokes to the new VM for 30 seconds to ensure the Windows ISO boots..."
+            bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
+        fi
+    fi
+fi
+if [ "$USE_RDP" = true ] && [ "$NETWORK_MODE" != "none" ]; then
+    echo "> Starting RDP autoconnect background task..."
+    autoConnectRdp &
+fi
+if [ "$USE_LOOKING_GLASS" = true ]; then
+    echo "> Starting the Looking Glass client..."
+    #while true; do sleep 1 && echo "lg" && sudo lsof -i ":${SPICE_PORT}" | grep --quiet LISTEN &> /dev/null && sleep 5 && sudo -u "$(logname)" "${THIRDPARTY_DIR}/LookingGlass/client/build/looking-glass-client" -p "${SPICE_PORT}" 2>&1 | grep '^\[E\]'; done &
+    autoConnectLookingGlass &
+fi
 
+#####################################################################################
+################################## Start the VM #####################################
+#####################################################################################
+if [ "$VM_START_MODE" = "qemu" ]; then
     if [ "$DRY_RUN" = true ]; then
         echo "> Generating qemu-system-x86_64 command (dry-run)..."
         echo ""
@@ -632,58 +792,46 @@ if [ "$VM_START_MODE" = "qemu" ]; then
         echo ""
         echo ""
     else
+        echo "> Starting the Virtual Machine using qemu..."
         sudo qemu-system-x86_64 "${QEMU_PARAMS[@]}"
     fi
 elif [ "$VM_START_MODE" = "virt-install" ]; then
-    if [ "$DRY_RUN" = false ]; then
-        if [ "$VM_INSTALL" = true ]; then
-            bash -c "for i in {1..30}; do sudo virsh send-key ${VM_NAME} KEY_HOME; sleep 1; done" &> /dev/null &
-        fi
-        echo "> Starting the Virtual Machine using virt-install..."
-    fi
     #VIRT_INSTALL_PARAMS+=("--debug")
     for param in "${QEMU_PARAMS[@]}"; do
         VIRT_INSTALL_PARAMS+=("--qemu-commandline='${param}'")
     done
 
-    #if [ "$VM_INSTALL" = true ]; then
-        if [ "$DRY_RUN" = true ]; then
-            echo "> Generating virt-install command (dry-run)..."
-            echo ""
-            printf "sudo virt-install"
-            for param in "${VIRT_INSTALL_PARAMS[@]}"; do
-                if [[ "${param}" == -* ]]; then 
-                    printf " \\\\\n  ${param}"
-                elif [[ $param = *" "* ]]; then
-                    printf " \"${param}\""
-                else
-                    printf " ${param}"
-                fi
-            done
-            echo ""
-            echo ""
-        elif [ "$GET_XML" = true ]; then
-            VIRT_INSTALL_PARAMS+=("--print-xml")
-            sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
-        elif [ "$VM_INSTALL" = true ]; then
-            sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
-        elif [ "$VM_INSTALL" = false ]; then
-            sudo virsh start "${VM_NAME}"
-        fi
-    #else
-    #    if [ "$DRY_RUN" = true ]; then
-    #        echo ""
-    #        printf "sudo virt-install"
-    #    else
-    #        virsh start "${VM_NAME}"
-    #    fi
-    #fi
+    if [ "$DRY_RUN" = true ]; then
+        echo "> Generating virt-install command (dry-run)..."
+        echo ""
+        printf "sudo virt-install"
+        for param in "${VIRT_INSTALL_PARAMS[@]}"; do
+            if [[ "${param}" == -* ]]; then 
+                printf " \\\\\n  ${param}"
+            elif [[ $param = *" "* ]]; then
+                printf " \"${param}\""
+            else
+                printf " ${param}"
+            fi
+        done
+        echo ""
+        echo ""
+    elif [ "$GET_XML" = true ]; then
+        VIRT_INSTALL_PARAMS+=("--print-xml")
+        sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
+    elif [ "$VM_ACTION" = "install" ]; then
+        echo "> Starting the Virtual Machine using virt-install..."
+        sudo virt-install "${VIRT_INSTALL_PARAMS[@]}"
+    elif [ "$VM_ACTION" = "start" ]; then
+        echo "> Starting the Virtual Machine using virsh..."
+        sudo virsh start "${VM_NAME}"
+    fi
 fi
 
-# This gets executed when the vm exits
-
+#####################################################################################
+################ Everything below gets executed when the vm exits ###################
+#####################################################################################
 if [ "$DGPU_PASSTHROUGH" = true ]; then
-
     echo "> Unbinding dGPU from vfio driver..."
     driver unbind "${DGPU_PCI_ADDRESS}"
     if [ "$HOST_DGPU_DRIVER" = "nvidia" ] || [ "$HOST_DGPU_DRIVER" = "nouveau" ]; then
@@ -692,7 +840,6 @@ if [ "$DGPU_PASSTHROUGH" = true ]; then
     fi
     echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
     driver bind "${DGPU_PCI_ADDRESS}" "${HOST_DGPU_DRIVER}"
-
 fi
 
 if [ "$VGPU_UUID" != "" ]; then
@@ -705,8 +852,11 @@ if [ "$VGPU_UUID" != "" ]; then
 
 fi
 
-if [ "$VM_INSTALL" = true ]; then
+if [ "$VM_ACTION" = "install" ]; then
     if sudo fdisk -lu "${DRIVE_IMG}" 2> /dev/null | grep --quiet 'Microsoft'; then
+        if [ "$ORIGINAL_VM_ACTION" = "auto" ]; then
+            sudo "${MAIN_SCRIPTS_DIR}/vm.sh" start
+        fi
         exit 0
     else
         echo "> [Error] Seems like the installation failed..."

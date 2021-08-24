@@ -42,8 +42,6 @@ else
     echo "> Spice WebDAV daemon already exists in iso folder..."
 fi
 
-https://www.spice-space.org/download/windows/spice-webdavd/spice-webdavd-x64-2.4.msi
-
 if [ ! -f "${HELPER_ISO_FILES_DIR}/bin/looking-glass-host-setup.exe" ]; then
     #echo "> Downloading Looking Glass Host application..."
     #wget "https://github.com/gnif/LookingGlass/releases/download/${LOOKING_GLASS_VERSION}/looking-glass-host.exe" -O "${HELPER_ISO_FILES_DIR}/bin/looking-glass-host.exe"
