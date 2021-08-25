@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
-source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
-
-echo "Install third party repositories"
-sudo add-apt-repository ppa:graphics-drivers/ppa -y
-
-echo "Auto-install NVIDIA Drivers with ubuntu-drivers"
-sudo ubuntu-drivers install -y
