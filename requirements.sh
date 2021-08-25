@@ -2,7 +2,7 @@
 # This file is supposed to be `source`d by the `scripts/main/setup.sh` bash script.
 # It specifies which executables and files and kernel parameters which part of this project depends on
 # WARNING: File dependencies can't contain spaces at the moment
-# Usage: `source ./requirements.txt`
+# Usage: `source ./requirements.sh`
 #####################################################################################################
 
 # TODO: #sudo dnf install -y msr-tools tunctl # TODO: check if these are still needed and if so what for
