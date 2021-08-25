@@ -168,7 +168,7 @@ else
     echo "> [Skipped] Windows ISO has already been downloaded."
 fi
 
-if [[ "$(sudo docker images -q tavk/ovmf-vbios-patch:1.0.1-edk2-stable201905 2> /dev/null)" == "" ]]; then
+if [[ "$(sudo docker images -q 'tavk/ovmf-vbios-patch:1.0.1-edk2-stable201905' 2> /dev/null)" == "" ]]; then
     echo "> Installing 'ovmf-vbios-patch' Docker Image..."
     ovmfVbiosPatchSetup
 else

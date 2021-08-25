@@ -62,9 +62,14 @@ if [ "$VM_ACTION" = "install" ] || [ "$VM_ACTION" = "start" ]; then
     fi
 fi
 
+# Remove domain from PCI addressed if provided
+DGPU_PCI_ADDRESS="$(echo "$DGPU_PCI_ADDRESS" | sed 's/0000://g')"
+IGPU_PCI_ADDRESS="$(echo "$IGPU_PCI_ADDRESS" | sed 's/0000://g')"
+
 #source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 alias driver="sudo '$COMMON_UTILS_TOOLS_DIR/driver-util'"
 alias vgpu="sudo '$COMMON_UTILS_TOOLS_DIR/vgpu-util'"
+alias lsiommu="sudo '$COMMON_UTILS_TOOLS_DIR/lsiommu'"
 
 VIRT_INSTALL_PARAMS=()
 QEMU_PARAMS=()
@@ -319,7 +324,7 @@ function setDGpuParams() {
 
             DGPU_INFO="$(sudo lspci | grep "$DGPU_PCI_ADDRESS" | cut -d' ' -f2-)"
             echo "> dGPU is: $DGPU_INFO"
-            echo "> dGPU dirver is $HOST_DGPU_DRIVER"
+            echo "> dGPU driver is $HOST_DGPU_DRIVER"
             
             echo "> Retrieving and parsing DGPU IDs..."
             DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
@@ -769,10 +774,23 @@ function vfioPci() {
         fi
 
         if [ "$DGPU_PASSTHROUGH" = true ]; then
-            echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
-            driver unbind "${DGPU_PCI_ADDRESS}"
-            echo "> Binding dGPU to VFIO driver..."
-            driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
+            #echo "> Unbinding dGPU from ${HOST_DGPU_DRIVER} driver..."
+            #driver unbind 
+            #echo "> Binding dGPU to VFIO driver..."
+            #driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
+            
+            LSPCI_OUTPUT="$(sudo lspci)"
+            LSIOMMU_OUTPUT="$(lsiommu)"
+            IOMMU_GROUP="$(echo "$LSIOMMU_OUTPUT" | grep "${DGPU_PCI_ADDRESS}" | cut -d' ' -f3)"
+            DGPU_IOMMU_GROUP_DEVICES=$(echo "$LSIOMMU_OUTPUT" | grep "IOMMU Group ${IOMMU_GROUP} " | grep -v "PCI bridge" | grep -v "ISA bridge")
+            echo "> IOMMU group for passthrough is ${IOMMU_GROUP}"
+            while IFS= read -r deviceInfo; do
+                deviceName="$(echo "$deviceInfo" | cut -d ' ' -f4-)"
+                deviceAddress="$(echo "$deviceInfo" | cut -d ' ' -f4)"
+                echo "> Unbinding device '${deviceName} from its driver, then bind it to the vfio-pci driver..."
+                sudo driverctl --nosave set-override "0000:${deviceAddress}" vfio-pci
+            done <<< "$DGPU_IOMMU_GROUP_DEVICES"
+
             #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
             # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
         fi
@@ -890,14 +908,20 @@ function startVm() {
 function onExit() {
     echo "Cleaning up..."
     if [ "$DGPU_PASSTHROUGH" = true ]; then
-        echo "> Unbinding dGPU from vfio driver..."
-        driver unbind "${DGPU_PCI_ADDRESS}"
-        if [ "$HOST_DGPU_DRIVER" = "nvidia" ] || [ "$HOST_DGPU_DRIVER" = "nouveau" ]; then
-            echo "> Turn the dGPU off using bumblebee..."
-            sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
-        fi
-        echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
-        driver bind "${DGPU_PCI_ADDRESS}" "${HOST_DGPU_DRIVER}"
+        #echo "> Unbinding dGPU from vfio driver..."
+        #driver unbind "${DGPU_PCI_ADDRESS}"
+        #if [ "$HOST_DGPU_DRIVER" = "nvidia" ] || [ "$HOST_DGPU_DRIVER" = "nouveau" ]; then
+        #    echo "> Turn the dGPU off using bumblebee..."
+        #    sudo bash -c "echo 'OFF' >> /proc/acpi/bbswitch"
+        #fi
+        #echo "> Binding dGPU back to ${HOST_DGPU_DRIVER} driver..."
+        #driver bind "${DGPU_PCI_ADDRESS}" "${HOST_DGPU_DRIVER}"
+        while IFS= read -r deviceInfo; do
+            deviceName="$(echo "$deviceInfo" | cut -d ' ' -f4-)"
+            deviceAddress="$(echo "$deviceInfo" | cut -d ' ' -f4)"
+            echo "> Unbinding device '${deviceName} from the vfio-pci driver, then bind it back to its original driver..."
+            sudo driverctl --nosave unset-override "0000:${deviceAddress}"
+        done <<< "$DGPU_IOMMU_GROUP_DEVICES"
     fi
 
     if [ "$VGPU_UUID" != "" ]; then
