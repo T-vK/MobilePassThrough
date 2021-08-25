@@ -318,13 +318,8 @@ function setDGpuParams() {
             DGPU_PASSTHROUGH=true
             echo "> Using dGPU passthrough..."
 
-            if [ "$HOST_DGPU_DRIVER" = "auto" ]; then
-                HOST_DGPU_DRIVER="$(sudo ${OPTIRUN_PREFIX}lspci -s "$DGPU_PCI_ADDRESS" -vv | grep driver | cut -d':' -f2 | cut -d' ' -f2-)"
-            fi
-
-            DGPU_INFO="$(sudo lspci | grep "$DGPU_PCI_ADDRESS" | cut -d' ' -f2-)"
+            DGPU_INFO="$(sudo ${OPTIRUN_PREFIX}lspci | grep "$DGPU_PCI_ADDRESS" | cut -d' ' -f2-)"
             echo "> dGPU is: $DGPU_INFO"
-            echo "> dGPU driver is $HOST_DGPU_DRIVER"
             
             echo "> Retrieving and parsing DGPU IDs..."
             DGPU_IDS=$(export DRI_PRIME=1 && sudo ${OPTIRUN_PREFIX}lspci -n -s "${DGPU_PCI_ADDRESS}" | grep -oP "\w+:\w+" | tail -1)
@@ -422,9 +417,8 @@ function vGpuSetup() {
             fi
 
             if [ "$VGPU_UUID" != "" ]; then
-                IGPU_INFO="$(sudo lspci | grep "$IGPU_PCI_ADDRESS" | cut -d' ' -f2-)"
+                IGPU_INFO="$(sudo ${OPTIRUN_PREFIX}lspci | grep "$IGPU_PCI_ADDRESS" | cut -d' ' -f2-)"
                 echo "> iGPU is: $IGPU_INFO"
-                echo "> iGPU dirver is: $HOST_DGPU_DRIVER"
                 echo "> UUID of vGPU is: $VGPU_UUID"
                 DMA_BUF_AVAILABLE=true
             fi
@@ -779,7 +773,7 @@ function vfioPci() {
             #echo "> Binding dGPU to VFIO driver..."
             #driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
             
-            LSPCI_OUTPUT="$(sudo lspci)"
+            LSPCI_OUTPUT="$(sudo ${OPTIRUN_PREFIX}lspci)"
             LSIOMMU_OUTPUT="$(lsiommu)"
             IOMMU_GROUP="$(echo "$LSIOMMU_OUTPUT" | grep "${DGPU_PCI_ADDRESS}" | cut -d' ' -f3)"
             DGPU_IOMMU_GROUP_DEVICES=$(echo "$LSIOMMU_OUTPUT" | grep "IOMMU Group ${IOMMU_GROUP} " | grep -v "PCI bridge" | grep -v "ISA bridge")

@@ -34,9 +34,9 @@ function installPackages() {
     PACKAGES_TO_INSTALL=""
     for CURRENT_ITEM in $WANTED_ITEMS; do
         if [ "$SEARCH_MODE" = "--executables" ]; then
-            PACKAGE_TO_INSTALL="$(sudo e-file $CURRENT_ITEM ????)"
+            PACKAGE_TO_INSTALL="$(sudo e-file $CURRENT_ITEM ????)" # TODO: FIXME
         elif [ "$SEARCH_MODE" = "--files" ]; then
-            PACKAGE_TO_INSTALL="$(sudo e-file $CURRENT_ITEM ????)"
+            PACKAGE_TO_INSTALL="$(sudo e-file $CURRENT_ITEM ????)" # TODO: FIXME
         fi
         if [ "$?" = "0" ] && [ "$PACKAGE_TO_INSTALL" != "" ]; then
             PACKAGES_TO_INSTALL+=" $PACKAGE_TO_INSTALL"
