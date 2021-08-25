@@ -793,6 +793,7 @@ function vfioPci() {
             
             while IFS= read -r deviceInfo; do
                 if [ "${deviceInfo}" != "" ]; then
+                    echo "> Passing through $deviceInfo"
                     deviceAddress="$(echo "$deviceInfo" | cut -d ' ' -f4)"
                     QEMU_PARAMS+=("-device" "vfio-pci,host=${deviceAddress}")
                 fi
@@ -928,7 +929,8 @@ function onExit() {
             deviceAddress="$(echo "$deviceInfo" | cut -d ' ' -f4)"
             echo "> Unbinding device '${deviceName} from the vfio-pci driver, then bind it back to its original driver..."
             sudo driverctl --nosave unset-override "0000:${deviceAddress}"
-        done <<< "$DGPU_IOMMU_GROUP_DEVICES"
+        done <<< "$DEVICES_TO_REBIND"
+
     fi
 
     if [ "$VGPU_UUID" != "" ]; then
