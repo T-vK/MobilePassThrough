@@ -770,7 +770,9 @@ function vfioPci() {
     if [ "$DRY_RUN" = false ]; then
         if [ "$DGPU_PASSTHROUGH" = true ] || [ "$SHARE_IGPU" = true ]; then
             echo "> Loading vfio-pci kernel module..."
-            sudo modprobe vfio-pci
+            sudo modprobe vfio
+            sudo modprobe vfio_pci
+            sudo modprobe vfio_iommu_type1
         fi
 
         if [ "$DGPU_PASSTHROUGH" = true ]; then
@@ -779,17 +781,28 @@ function vfioPci() {
             #echo "> Binding dGPU to VFIO driver..."
             #driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
             
+            IOMMU_GROUP="$(echo "$LSIOMMU_OUTPUT" | grep "${DGPU_PCI_ADDRESS}" | cut -d' ' -f3)"
+            echo "> IOMMU group for passthrough is ${IOMMU_GROUP}"
+
             LSPCI_OUTPUT="$(sudo lspci)"
             LSIOMMU_OUTPUT="$(lsiommu)"
             IOMMU_GROUP="$(echo "$LSIOMMU_OUTPUT" | grep "${DGPU_PCI_ADDRESS}" | cut -d' ' -f3)"
             DGPU_IOMMU_GROUP_DEVICES=$(echo "$LSIOMMU_OUTPUT" | grep "IOMMU Group ${IOMMU_GROUP} " | grep -v "PCI bridge" | grep -v "ISA bridge")
-            echo "> IOMMU group for passthrough is ${IOMMU_GROUP}"
+            DGPU_FUNCTION_DEVICES=$(echo "$LSIOMMU_OUTPUT" | grep " ${DGPU_PCI_ADDRESS::-1}" | grep -v "PCI bridge" | grep -v "ISA bridge" | grep -v "${DGPU_PCI_ADDRESS}" | grep -v ^$)
+            DEVICES_TO_REBIND="$(echo -e "${DGPU_IOMMU_GROUP_DEVICES}\n${DGPU_FUNCTION_DEVICES}" | sort | uniq | grep -v ^$)"
             while IFS= read -r deviceInfo; do
                 deviceName="$(echo "$deviceInfo" | cut -d ' ' -f4-)"
                 deviceAddress="$(echo "$deviceInfo" | cut -d ' ' -f4)"
-                echo "> Unbinding device '${deviceName} from its driver, then bind it to the vfio-pci driver..."
+                echo "> Unbinding device '${deviceName}' from its driver, then bind it to the vfio-pci driver..."
                 sudo driverctl --nosave set-override "0000:${deviceAddress}" vfio-pci
-            done <<< "$DGPU_IOMMU_GROUP_DEVICES"
+            done <<< "$DEVICES_TO_REBIND"
+            
+            while IFS= read -r deviceInfo; do
+                if [ "${deviceInfo}" != "" ]; then
+                    deviceAddress="$(echo "$deviceInfo" | cut -d ' ' -f4)"
+                    QEMU_PARAMS+=("-device" "vfio-pci,host=${deviceAddress}")
+                fi
+            done <<< "$DGPU_FUNCTION_DEVICES"
 
             #sudo bash -c "echo 'options vfio-pci ids=${DGPU_VENDOR_ID}:${DGPU_DEVICE_ID}' > '/etc/modprobe.d/vfio.conf'"
             # TODO: Make sure to also do the rebind for the other devices that are in the same iommu group (exclude stuff like PCI Bridge root ports that don't have vfio drivers)
