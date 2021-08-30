@@ -34,9 +34,9 @@ function installPackages() {
     PACKAGES_TO_INSTALL=""
     for CURRENT_ITEM in $WANTED_ITEMS; do
         if [ "$SEARCH_MODE" = "--executables" ]; then
-            PACKAGE_TO_INSTALL="$(sudo apt-file search {/bin,/sbin,/usr/bin/,/usr/sbin}/$CURRENT_ITEM | head -1 | cut -d':' -f1)"
+            PACKAGE_TO_INSTALL="$(sudo apt-file search {/bin,/sbin,/usr/bin/,/usr/sbin}/$CURRENT_ITEM | grep "${CURRENT_ITEM}$" | head -1 | cut -d':' -f1)"
         elif [ "$SEARCH_MODE" = "--files" ]; then
-            PACKAGE_TO_INSTALL="$(sudo apt-file search $CURRENT_ITEM | head -1 | cut -d':' -f1)"
+            PACKAGE_TO_INSTALL="$(sudo apt-file search $CURRENT_ITEM | grep "${CURRENT_ITEM}$" | head -1 | cut -d':' -f1)"
         fi
         if [ "$?" = "0" ] && [ "$PACKAGE_TO_INSTALL" != "" ]; then
             PACKAGES_TO_INSTALL+=" $PACKAGE_TO_INSTALL"

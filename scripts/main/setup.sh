@@ -33,6 +33,10 @@ alias removeAutoStartService="'${SERVICE_MANAGER}' remove-autostart-service"
 mkdir -p "${THIRDPARTY_DIR}"
 mkdir -p "${VM_FILES_DIR}"
 
+if [ -f "${DISTRO_UTILS_DIR}/add-repos" ]; then
+    "${DISTRO_UTILS_DIR}/add-repos"
+fi
+
 MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
 MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
 
