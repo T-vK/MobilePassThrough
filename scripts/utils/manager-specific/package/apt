@@ -45,7 +45,7 @@ function installPackages() {
         fi
     done
     if [ "$PACKAGES_TO_INSTALL" != "" ]; then
-        sudo apt-get install -y $PACKAGES_TO_INSTALL
+        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y $PACKAGES_TO_INSTALL
     fi
 }
 
