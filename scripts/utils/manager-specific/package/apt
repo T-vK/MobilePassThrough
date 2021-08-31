@@ -34,7 +34,7 @@ function installPackages() {
     PACKAGES_TO_INSTALL=""
     for CURRENT_ITEM in $WANTED_ITEMS; do
         if [ "$SEARCH_MODE" = "--executables" ]; then
-            PACKAGE_TO_INSTALL="$(sudo apt-file search {/bin,/sbin,/usr/bin/,/usr/sbin}/$CURRENT_ITEM | grep "${CURRENT_ITEM}$" | head -1 | cut -d':' -f1)"
+            PACKAGE_TO_INSTALL="$(sudo apt-file search -l -x "^/(bin|sbin|usr/bin|usr/sbin)/${CURRENT_ITEM}$" | head -1)"
         elif [ "$SEARCH_MODE" = "--files" ]; then
             PACKAGE_TO_INSTALL="$(sudo apt-file search $CURRENT_ITEM | grep "${CURRENT_ITEM}$" | head -1 | cut -d':' -f1)"
         fi
@@ -45,7 +45,7 @@ function installPackages() {
         fi
     done
     if [ "$PACKAGES_TO_INSTALL" != "" ]; then
-        DEBIAN_FRONTEND=noninteractive sudo apt-get install -y $PACKAGES_TO_INSTALL
+        sudo bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -yq $PACKAGES_TO_INSTALL"
     fi
 }
 
