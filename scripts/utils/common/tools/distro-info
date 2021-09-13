@@ -37,4 +37,8 @@ else
     VER=$(uname -r)
 fi
 
-echo "${OS}/${VER}"
+if [ "$1" = "--exclude-version" ]; then
+    echo "${OS}"
+else
+    echo "${OS}/${VER}"
+fi

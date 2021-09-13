@@ -24,8 +24,6 @@ alias buildFakeBatterySsdt="sudo '$COMMON_UTILS_SETUP_DIR/build-fake-battery-ssd
 alias vbiosFinderSetup="sudo '$COMMON_UTILS_SETUP_DIR/vbios-finder-setup'"
 alias lookingGlassSetup="sudo '$COMMON_UTILS_SETUP_DIR/looking-glass-setup'"
 alias generateHelperIso="sudo '${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh'"
-alias nvidiaSetup="sudo '$DISTRO_UTILS_DIR/nvidia-setup'"
-alias bumblebeeSetup="sudo '$DISTRO_UTILS_DIR/bumblebee-setup'"
 alias downloadWindowsIso="$COMMON_UTILS_TOOLS_DIR/download-windows-iso"
 alias createAutoStartService="'${SERVICE_MANAGER}' create-autostart-service"
 alias removeAutoStartService="'${SERVICE_MANAGER}' remove-autostart-service"
@@ -33,8 +31,8 @@ alias removeAutoStartService="'${SERVICE_MANAGER}' remove-autostart-service"
 mkdir -p "${THIRDPARTY_DIR}"
 mkdir -p "${VM_FILES_DIR}"
 
-if [ -f "${DISTRO_UTILS_DIR}/add-repos" ]; then
-    "${DISTRO_UTILS_DIR}/add-repos"
+if [ -f "${DISTRO_UTILS_DIR}/pre-package-info-update" ]; then
+    "${DISTRO_UTILS_DIR}/pre-package-info-update"
 fi
 
 MISSING_EXECUTABLES="$(getMissingExecutables "$ALL_EXEC_DEPS")"
@@ -43,6 +41,10 @@ MISSING_FILES="$(getMissingFiles "$ALL_FILE_DEPS")"
 if [ "$MISSING_EXECUTABLES" != "" ] || [ "$MISSING_FILES" != "" ]; then
     echo "> Update package info..."
     updatePkgInfo
+fi
+
+if [ -f "${DISTRO_UTILS_DIR}/pre-package-install" ]; then
+    "${DISTRO_UTILS_DIR}/pre-package-install"
 fi
 
 if [ "$MISSING_EXECUTABLES" != "" ]; then
@@ -182,11 +184,11 @@ fi
 if [ "$1" = "auto" ]; then
     if [ "$REBOOT_REQUIRED" = true ]; then
         echo "> Creating a temporary service that will run on next reboot and continue the installation..."
-        createAutoStartService "${PROJECT_DIR}/mbpt.sh auto"
+        createAutoStartService "${PROJECT_DIR}/mbpt.sh auto" "MobilePassthroughInitSetup"
         echo "> Rebooting in 30 seconds... Press Ctrl+C to cancel."
         sleep 30 && sudo shutdown -r 0
     else
-        removeAutoStartService &> /dev/null
+        removeAutoStartService "MobilePassthroughInitSetup" &> /dev/null
         echo "> No reboot required."
     fi
 else

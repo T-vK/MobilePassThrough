@@ -5,12 +5,18 @@ GRUB_CFG_PATH=/etc/default/grub
 COMMAND="$1" # Supported commands: add, remove, apply
 PARAM="$2"
 
+if sudo cat "$GRUB_CFG_PATH" | grep --quiet "GRUB_CMDLINE_LINUX_DEFAULT="; then
+    GRUB_CMDLINE_VAR="GRUB_CMDLINE_LINUX_DEFAULT"
+else
+    GRUB_CMDLINE_VAR="GRUB_CMDLINE_LINUX"
+fi
+
 function addKernelParam() {
-    if ! sudo cat "$GRUB_CFG_PATH" | grep "GRUB_CMDLINE_LINUX=" | grep --quiet "$1"; then
-        sudo sed -i "s/^GRUB_CMDLINE_LINUX=\"/&$1 /" "$GRUB_CFG_PATH"
-        echo "addKernelParam: Added \"$1\" to GRUB_CMDLINE_LINUX in $GRUB_CFG_PATH"
+    if ! sudo cat "$GRUB_CFG_PATH" | grep "$GRUB_CMDLINE_VAR=" | grep --quiet "$1"; then
+        sudo sed -i "s/^$GRUB_CMDLINE_VAR=\"/&$1 /" "$GRUB_CFG_PATH"
+        echo "addKernelParam: Added \"$1\" to $GRUB_CMDLINE_VAR in $GRUB_CFG_PATH"
     else
-        echo "addKernelParam: No action required. \"$1\" already exists in GRUB_CMDLINE_LINUX of $GRUB_CFG_PATH"
+        echo "addKernelParam: No action required. \"$1\" already exists in $GRUB_CMDLINE_VAR of $GRUB_CFG_PATH"
     fi
 }
 function addKernelParams() {
@@ -19,11 +25,11 @@ function addKernelParams() {
     done
 }
 function removeKernelParam() {
-    if sudo cat "$GRUB_CFG_PATH" | grep "GRUB_CMDLINE_LINUX=" | grep --quiet "$1"; then
+    if sudo cat "$GRUB_CFG_PATH" | grep "$GRUB_CMDLINE_VAR=" | grep --quiet "$1"; then
         sudo sed -i "s/$1 //" "$GRUB_CFG_PATH"
-        echo "removeKernelParam: Removed \"$1\" from GRUB_CMDLINE_LINUX in $GRUB_CFG_PATH"
+        echo "removeKernelParam: Removed \"$1\" from $GRUB_CMDLINE_VAR in $GRUB_CFG_PATH"
     else
-        echo "removeKernelParam: No action required. \"$1\" is not set in GRUB_CMDLINE_LINUX of $GRUB_CFG_PATH"
+        echo "removeKernelParam: No action required. \"$1\" is not set in $GRUB_CMDLINE_VAR of $GRUB_CFG_PATH"
     fi
 }
 function removeKernelParams() {
@@ -33,7 +39,11 @@ function removeKernelParams() {
 }
 
 function applyKernelParamChanges() {
-    sudo sh -c 'grub2-mkconfig > /etc/grub2-efi.cfg'
+    if command -v update-grub &> /dev/null; then
+        sudo update-grub
+    elif [ -f "/etc/grub2-efi.cfg" ]; then
+        sudo sh -c 'grub2-mkconfig > /etc/grub2-efi.cfg'
+    fi
 }
 
 if [ "$COMMAND" = "add" ]; then

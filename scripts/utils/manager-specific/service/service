@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+
+COMMAND="$1"
+SERVICE_NAME="$2"
+
+if [ "$COMMAND" = "create-autostart-service" ]; then
+    echo "Not implemented"
+    exit 1
+elif [ "$COMMAND" = "remove-autostart-service" ]; then
+    echo "Not implemented"
+    exit 1
+elif [ "$COMMAND" = "start" ]; then
+    sudo service ${SERVICE_NAME} start &> /dev/null
+elif [ "$COMMAND" = "stop" ]; then
+    sudo service ${SERVICE_NAME} stop &> /dev/null
+elif [ "$COMMAND" = "restart" ]; then
+    sudo service ${SERVICE_NAME} stop &> /dev/null
+    sudo service ${SERVICE_NAME} start &> /dev/null
+fi

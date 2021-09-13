@@ -10,8 +10,12 @@ COMMAND="$1"
 if [ "$COMMAND" = "service" ]; then
     if command -v "systemctl" &> /dev/null; then
         echo "systemd"
-    elif [ -d "/etc/init.d/" ] && command -v "service" &> /dev/null; then
-        echo "sysvinit"
+    elif command -v "service" &> /dev/null; then
+        echo "service"
+    elif command -v "initctl" &> /dev/null; then
+        echo "initctl"
+    #elif [ -d "/etc/init.d/" ] && command -v "service" &> /dev/null; then
+    #    echo "sysvinit"
     else
         exit 1
     fi
@@ -22,7 +26,7 @@ elif [ "$COMMAND" = "initramfs" ]; then
         exit 1
     fi
 elif [ "$COMMAND" = "kernelparams" ]; then
-    if [ -f "/etc/default/grub" ] && [ -f "/etc/grub2-efi.cfg" ]; then
+    if [ -f "/etc/default/grub" ]; then
         echo "grub"
     else
         exit 1

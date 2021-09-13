@@ -221,8 +221,7 @@ Credits to [Cole Robinson](https://blog.wikichoon.com/) for giving me a lot of i
 ## TODO
 
 ### High prio
-- Create a bootable live version of this project
-- Test on Ubuntu
+- Fix for Ubuntu (Fix file dependency installation)
 - Document all the new features
 - Create a first Beta release
 - Test with an Nvidia notebook

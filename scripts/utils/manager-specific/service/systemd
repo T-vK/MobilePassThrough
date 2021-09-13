@@ -4,7 +4,7 @@ source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 
 COMMAND="$1"
 
-SERVICE_NAME="MobilePassthroughInitSetup"
+SERVICE_NAME="$2"
 if [ "$COMMAND" = "create-autostart-service" ]; then
     COMMAND_TO_RUN="$2"
     EXEC_START="'$GUI_TERMINAL' run-with-command '$COMMAND_TO_RUN'"
@@ -29,4 +29,10 @@ WantedBy=multi-user.target" > /etc/systemd/system/${SERVICE_NAME}.service
     sudo systemctl enable ${SERVICE_NAME}.service
 elif [ "$COMMAND" = "remove-autostart-service" ]; then
     sudo systemctl disable ${SERVICE_NAME}.service &> /dev/null
+elif [ "$COMMAND" = "start" ]; then
+    sudo systemctl start ${SERVICE_NAME}.service &> /dev/null
+elif [ "$COMMAND" = "stop" ]; then
+    sudo systemctl stop ${SERVICE_NAME}.service &> /dev/null
+elif [ "$COMMAND" = "restart" ]; then
+    sudo systemctl restart ${SERVICE_NAME}.service &> /dev/null
 fi
