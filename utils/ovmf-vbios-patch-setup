@@ -12,7 +12,8 @@ DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
 mkdir -p "${PROJECT_DIR}/thirdparty"
 cd "${PROJECT_DIR}/thirdparty"
 
-sudo service docker start
+# docker daemon is already running on ubuntu snap
+#sudo service docker start
 git clone https://github.com/T-vK/ovmf-with-vbios-patch.git
 cd ovmf-with-vbios-patch
 sudo docker build -t ovmf-vbios-patch .
