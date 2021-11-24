@@ -43,11 +43,11 @@ And there is also a lot of advanced stuff that I managed to fully automate, like
 ## Currently supported distributions
 
  - Fedora 34
- - Ubuntu 21.04 (not tested in a while)
+ - Ubuntu 21.04 (Currently not working. Some dependencies won't be installed automatically.)
 
 ## Limitations
 
-- The project is currently only really being tested on Fedora and Ubuntu. But it has been written in a somewhat distribution-agnostic way, meaning it might just work on other distributions and if not, you might just have to add a new script to `scripts/utils/manager-specific/`. (For example the project currently supports the package managers `dnf` and `apt`, if your distro uses `pacman`, you have to add a pacman script that can be called the same way as the [apt script](scripts/utils/manager-specific/package/apt).)
+- The project is currently only really being tested on Fedora and Ubuntu (currently broken). But it has been written in a somewhat distribution-agnostic way, meaning it might just work on other distributions and if not, you might just have to add a new script to `scripts/utils/manager-specific/`. (For example the project currently supports the package managers `dnf` and `apt`, if your distro uses `pacman`, you have to add a pacman script that can be called the same way as the [apt script](scripts/utils/manager-specific/package/apt).)
 - This project currently only supports Windows 10 x64 VMs and hopefully Windows 11 x64 VMs at some point. (For older Windows versions you have to figure out the driver installation etc. on your own.)
 - Only tested for Intel+Nvidia and Intel+AMD systems. (Although the compatibility-check (./mbpt.sh check) should actually work on any hardware.)
 - Expect bugs. I have only tested this on a handful of devices and I have constantly changed the scripts without testing everything every time.
