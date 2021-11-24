@@ -1,0 +1,64 @@
+#####################################################################################################
+# This script has to be sourced and is not meant to be executed directly!
+# How to use: Insert the following two lines without the `#` symbols below the shebang of all scripts in this project that need it:
+# while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+# source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+#####################################################################################################
+
+
+SCRIPTS_DIR="${PROJECT_DIR}/scripts"
+  MAIN_SCRIPTS_DIR="${SCRIPTS_DIR}/main"
+  UTILS_DIR="${SCRIPTS_DIR}/utils"
+    COMMON_UTILS_DIR="${UTILS_DIR}/common"
+      COMMON_UTILS_LIBS_DIR="${COMMON_UTILS_DIR}/libs"
+      COMMON_UTILS_PLUGINS_DIR="${COMMON_UTILS_DIR}/plugins"
+      COMMON_UTILS_SETUP_DIR="${COMMON_UTILS_DIR}/setup"
+      COMMON_UTILS_TOOLS_DIR="${COMMON_UTILS_DIR}/tools"
+    DISTRO_UTILS_DIR="${UTILS_DIR}/distro-specific/$("${COMMON_UTILS_TOOLS_DIR}/distro-info" --exclude-version)"
+    DISTRO_VERSION_UTILS_DIR="${UTILS_DIR}/distro-specific/$("${COMMON_UTILS_TOOLS_DIR}/distro-info")"
+    MANAGER_UTILS_DIR="${UTILS_DIR}/manager-specific"
+      INITRAMFS_MANAGER="${MANAGER_UTILS_DIR}/initramfs/$(sudo "${COMMON_UTILS_TOOLS_DIR}/get-manager" initramfs)"
+      SERVICE_MANAGER="${MANAGER_UTILS_DIR}/service/$("${COMMON_UTILS_TOOLS_DIR}/get-manager" service)"
+      KERNEL_PARAM_MANAGER="${MANAGER_UTILS_DIR}/kernelparams/$(sudo "${COMMON_UTILS_TOOLS_DIR}/get-manager" kernelparams)"
+      PACKAGE_MANAGER="${MANAGER_UTILS_DIR}/package/$("${COMMON_UTILS_TOOLS_DIR}/get-manager" package)"
+      GUI_TERMINAL="${MANAGER_UTILS_DIR}/gui-terminal/$("${COMMON_UTILS_TOOLS_DIR}/get-manager" gui-terminal)"
+THIRDPARTY_DIR="${PROJECT_DIR}/thirdparty"
+ACPI_TABLES_DIR="${PROJECT_DIR}/acpi-tables"
+HELPER_ISO_FILES_DIR="${PROJECT_DIR}/helper-iso-files"
+LIVE_ISO_FILES_DIR="${PROJECT_DIR}/live-iso-files"
+LOG_BASE_DIR="${PROJECT_DIR}/logs"
+
+C_NC='\033[0m' # No Color
+C_RED='\033[0;31m'
+C_GREEN='\033[0;32m'
+C_ORANGE='\033[1;33m'
+
+function echo_red() {
+    echo -e "${C_RED}$@${C_NC}"
+}
+function echo_green() {
+    echo -e "${C_GREEN}$@${C_NC}"
+}
+function echo_orange() {
+    echo -e "${C_ORANGE}$@${C_NC}"
+}
+function echo_white() {
+    echo -e "$@"
+}
+
+function loadConfig() {
+    # If user.conf doesn't exist use the default.conf
+    if [ -f "${PROJECT_DIR}/user.conf" ]; then
+        #echo "> Loading config from ${PROJECT_DIR}/user.conf"
+        source "${PROJECT_DIR}/user.conf"
+    elif [ -f "${PROJECT_DIR}/default.conf" ]; then
+        #echo "> Warning: No user.conf found, falling back to default.conf"
+        #echo "> Loading config from ${PROJECT_DIR}/default.conf"
+        source "${PROJECT_DIR}/default.conf"
+    else
+        #echo "> Error: No user.conf or user.conf found!"
+        exit
+    fi
+}
+
+shopt -s expand_aliases

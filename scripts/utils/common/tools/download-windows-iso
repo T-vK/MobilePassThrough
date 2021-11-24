@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+#####################################################################################################
+# Downloads a Windows 10 ISO from Microsoft
+# Usage: `./download-windows-iso "/path/to/where/you/want/to/save/the/windows.iso" "x64"` 
+#####################################################################################################
+
+WIN10_IMG_DESTINATION="$1"
+WIN10_IMG_ARCH="$2"
+echo "$WIN10_IMG_DESTINATION"
+
+if [[ "$WIN10_IMG_ARCH" == "x86" ]] || [[ "$WIN10_IMG_ARCH" == "i386" ]] ; then
+    echo "Retrieving the x86 Windows 10 iso URL..."
+    WINDOWS_10_ISO_URL=$(curl -LsI -o /dev/null -w %{url_effective} "https://tb.rg-adguard.net/dl.php?go=7e583fea")
+else
+    echo "Retrieving the x64 Windows 10 iso URL..."
+    WINDOWS_10_ISO_URL=$(curl -LsI -o /dev/null -w %{url_effective} "https://tb.rg-adguard.net/dl.php?go=3dd1ce66")
+fi
+
+echo "$WINDOWS_10_ISO_URL"
+echo "Making sure the URL comes from a trusted Microsoft domain..."
+if [[ $WINDOWS_10_ISO_URL == https://software-download.microsoft.com/* ]] ; then
+    echo "Downloading the Windows 10 installation iso..."
+    if [ ! -f "${WIN10_IMG_DESTINATION}" ]; then
+        wget "${WINDOWS_10_ISO_URL}" -c -O "${WIN10_IMG_DESTINATION}.part"
+        mv "${WIN10_IMG_DESTINATION}.part" "${WIN10_IMG_DESTINATION}"
+    else
+        echo "Skipping download because the Windows ISO already exists: ${WIN10_IMG_DESTINATION}"
+    fi
+else
+    echo "URL validation failed. Please download the Windows 10 iso manually."
+    exit 1
+fi

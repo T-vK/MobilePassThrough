@@ -4,6 +4,7 @@
 /vm-files/*.fd
 /vm-files/*.iso
 /vm-files/*.img
+/vm-files/*.vfd
 /vm-files/*.aml
 /vm-files/patched-ovmf-files
 /vm-files/MAC_ADDRESS.txt
@@ -11,8 +12,12 @@
 /thirdparty
 /user.conf
 /helper-iso-files/bin
-/utils/nvflash_linux
 /helper-iso-files/drivers
+/helper-iso-files/.checksum
+/live-iso-files/*.iso
+/live-iso-files/scripts/chocolatey-install.ps1
+/utils/nvflash_linux
+/tmp
 .*.swp
 .*.swo
 *.asc

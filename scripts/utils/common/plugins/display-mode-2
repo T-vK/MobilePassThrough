@@ -1,0 +1,22 @@
+#####################################################################################################
+# This script has to be sourced and is not meant to be executed directly!
+# It sets the display output configuration.
+# How to use:
+# source "$PLUGIN_DIR/display-mode-x"
+#####################################################################################################
+
+RDP=true
+if [ "$DMA_BUF_AVAILABLE" = true ]; then
+    USE_LOOKING_GLASS=true
+    USE_DMA_BUF=true
+    USE_QXL=false
+else
+    USE_DMA_BUF=false
+    if [ "$VM_ACTION" = "install" ]; then
+        USE_QXL=true
+        USE_LOOKING_GLASS=false
+    elif [ "$VM_ACTION" = "start" ]; then
+        USE_QXL=false
+        USE_LOOKING_GLASS=true
+    fi
+fi

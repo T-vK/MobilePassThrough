@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+
+
+#####################################################################################################
+# WARNING: THIS SCRIPT WORKS ON ALMOST NO SYSTEM
+# This script tries to extract the vBIOS ROM form your dGPU.
+# usage: `./extract-vbios`
+#####################################################################################################
+
+function extractNvidiaVbios() {
+    if which optirun ; then
+        USE_BUMBLEBEE=true
+        OPTIRUN_PREFIX="optirun "
+    else
+        USE_BUMBLEBEE=false
+        OPTIRUN_PREFIX=""
+    fi
+    if [ ! -f "${UTILS_DIR}/nvflash_linux" ]; then
+        NVFLASH_DOWNLOAD_ID=$(curl https://www.techpowerup.com/download/nvidia-nvflash/ | grep '_linux.zip' -A 5 | grep 'name="id" value="' | cut -d '"' -f6)
+        wget --post-data "id=${NVFLASH_DOWNLOAD_ID}&server_id=2" https://www.techpowerup.com/download/nvidia-nvflash/ -O ${THIRDPARTY_DIR}/nvidia-nvflash.zip
+        unzip ${THIRDPARTY_DIR}/nvidia-nvflash.zip -d ${THIRDPARTY_DIR}/
+        rm -f ${THIRDPARTY_DIR}/nvidia-nvflash.zip
+        chmod +x ${THIRDPARTY_DIR}/nvflash_linux
+    fi
+    mkdir -p "${VM_FILES_DIR}/vbios-roms"
+    sudo ${OPTIRUN_PREFIX}${THIRDPARTY_DIR}/nvflash_linux --save ${VM_FILES_DIR}/vbios-roms/nvidia_vbios.rom
+}
+
+function extractVbios() {
+    PCI_ADDRESS="$1"
+    OUTPUT_AS="$1"
+    sudo bash -c "echo 1 > /sys/bus/pci/devices/0000:${PCI_ADDRESS}/rom"
+    sudo cat /sys/bus/pci/devices/0000:${PCI_ADDRESS}/rom > ${OUTPUT_AS}
+    sudo bash -c "echo 0 > /sys/bus/pci/devices/0000:${PCI_ADDRESS}/rom"
+}
+
+#echo "Attempting to extract the VBIOS ROM of the Nvidia GPU"
+#echo "This will probably fail. If you know how to fix it please open an issue and tell me."
+#extractNvidiaVbios
+extractVbios $1 $2

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
 
-SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-PROJECT_DIR="${SCRIPT_DIR}"
-UTILS_DIR="${PROJECT_DIR}/utils"
-DISTRO=$("${UTILS_DIR}/distro-info")
-DISTRO_UTILS_DIR="${UTILS_DIR}/${DISTRO}"
-USER_SCRIPTS_DIR="${PROJECT_DIR}/scripts"
+#####################################################################################################
+# This is the only script that you should really care about as a user of MobilePassThrough.
+# Usage: `./mbpt.sh --help`
+#####################################################################################################
 
 COMMAND="$1"
 
@@ -17,14 +17,19 @@ function printHelp() {
     echo ''
     echo 'Options:'
     echo '  -h, --help       Print usage'
-    echo '  -v, --version    Print version information'
     echo ''
     echo 'Commands:'
-    echo '    setup        Install required dependencies and set required kernel parameters'
-    echo '    check        Check if and to what degree your notebook is capable of running a GPU passthrough setup'
+    echo '    auto         Automatically run check, setup and install'
     echo '    configure    Interactively guides you through the creation of your config file'
-    echo '    iso          Generate a helper iso file that contains required drivers and a helper-script for your Windows VM'
-    echo '    start        Start your VM'
+    echo '    check        Check if and to what degree your notebook is capable of running a GPU passthrough setup'
+    echo '    setup        Install required dependencies and set required kernel parameters'
+    echo '    install      Create and install the VM'
+    echo '    start        Start the VM'
+    echo '    live         Create / Flash a Live ISO image of this project'
+    # TODO: Split start/install in pre-start, start/install, post-start ()
+    # TODO implement:
+    #echo '    get-xml      Print out the VM configuration as XML'
+    #echo '    get-qemu     Print out the VM configuration as a qemu-system-x86_64 command'
     echo '    vbios        Dump the vBIOS ROM from the running system or extract it from a BIOS update'
     echo ''
     echo 'Examples:'
@@ -40,8 +45,29 @@ function printHelp() {
     echo '    # Generate a helper iso file that contains required drivers and a helper-script for your Windows VM'
     echo '    mbpt.sh iso'
     echo ''
-    echo '    # Start your VM'
+    echo '    # Create the VM and install Windows in it (Will overwrite an older instance if one exists!)'
+    echo '    mbpt.sh install'
+    echo ''
+    echo '    # Start the VM'
     echo '    mbpt.sh start'
+    echo ''
+    echo '    # Create a Live ISO'
+    echo '    mbpt.sh live buid'
+    echo ''
+    echo '    # Flash a Live ISO to the USB drive /dev/sdx'
+    echo '    mbpt.sh live flash /dev/sdx'
+    echo ''
+    echo '    # Print the qemu command that would have been used to start the VM'
+    echo '    mbpt.sh start dry-run'
+    echo ''
+    echo '    # Print the qemu command that would have been used to install the VM'
+    echo '    mbpt.sh install dry-run'
+    echo ''
+    echo '    # Print the libvirt XML that would have been used to start the VM'
+    echo '    mbpt.sh start get-xml'
+    echo ''
+    echo '    # Print the libvirt XML that would have been used to install the VM'
+    echo '    mbpt.sh install get-xml'
     echo ''
     echo '    # Dump the vBIOS ROM of the GPU with the PCI address 01:00.0 to ./my-vbios.rom (This will most likely fail)'
     echo '    mbpt.sh vbios dump 01:00.0 ./my-vbios.rom'
@@ -54,22 +80,43 @@ function printHelp() {
 if [ "$COMMAND" = "help" ] || [ "$COMMAND" = "--help" ] || [ "$COMMAND" = "-h" ] || [ "$COMMAND" = "" ]; then
     printHelp
 elif [ "$COMMAND" = "setup" ]; then
-    sudo "${USER_SCRIPTS_DIR}/setup.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/setup.sh"
 elif [ "$COMMAND" = "check" ]; then
-    sudo "${USER_SCRIPTS_DIR}/compatibility-check.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh"
 elif [ "$COMMAND" = "configure" ]; then
-    "${USER_SCRIPTS_DIR}/generate-vm-config.sh"
-elif [ "$COMMAND" = "iso" ]; then
-    "${USER_SCRIPTS_DIR}/generate-helper-iso.sh"
+    "${MAIN_SCRIPTS_DIR}/generate-vm-config.sh"
+elif [ "$COMMAND" = "helper-iso" ]; then
+    "${MAIN_SCRIPTS_DIR}/generate-helper-iso.sh"
+elif [ "$COMMAND" = "install" ] || [ "$COMMAND" = "create" ]; then
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" install $2
+elif [ "$COMMAND" = "remove" ]; then
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" remove
 elif [ "$COMMAND" = "start" ]; then
-    sudo "${USER_SCRIPTS_DIR}/start-vm.sh"
-elif [ "$COMMAND" = "vbios" ]; then
-    if [ "$2" == "extract" ] ; then
-        mkdir -p "$4/"
-        cd "${PROJECT_DIR}/thirdparty/VBiosFinder"
-        ./vbiosfinder extract "$(readlink -f "$3")"
-        mv "${PROJECT_DIR}/thirdparty/VBiosFinder/output/*" "$4/"
-    elif [ "$2" == "dump" ] ; then
-        sudo "${UTILS_DIR}/extract-vbios" "$3" "$4"
+    sudo "${MAIN_SCRIPTS_DIR}/vm.sh" start $2
+elif [ "$COMMAND" = "live" ]; then
+    sudo "${MAIN_SCRIPTS_DIR}/generate-live-iso.sh" "$2" "$3"
+elif [ "$COMMAND" = "auto" ]; then
+    #sudo "${MAIN_SCRIPTS_DIR}/compatibility-check.sh"
+    sudo "${MAIN_SCRIPTS_DIR}/setup.sh" auto
+    if [ $? -eq 0 ]; then
+        sudo "${MAIN_SCRIPTS_DIR}/iommu-check.sh"
+        if [ $? -eq 0 ]; then
+            sudo "${MAIN_SCRIPTS_DIR}/vm.sh" auto
+        else
+            echo "Exiting..."
+            exit 1
+        fi
+    else
+        echo "Exiting..."
+        exit 1
     fi
-fi 
+elif [ "$COMMAND" = "vbios" ]; then
+    if [ "$2" == "extract" ]; then
+        mkdir -p "$4/"
+        cd "${THIRDPARTY_DIR}/VBiosFinder"
+        ./vbiosfinder extract "$(readlink -f "$3")"
+        mv "${THIRDPARTY_DIR}/VBiosFinder/output/*" "$4/"
+    elif [ "$2" == "dump" ]; then
+        sudo "${COMMON_UTILS_SETUP_DIR}/extract-vbios" "$3" "$4"
+    fi
+fi

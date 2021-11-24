@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+
+alias commandAvailable="${COMMON_UTILS_TOOLS_DIR}/commands-available"
+
+if ! commandAvailable "x86_64-w64-mingw32-g++"; then
+    sudo apt-get install -y g++-mingw-w64-x86-64-win32
+fi
+
+if ! commandAvailable "upx"; then
+    sudo apt-get install -y upx-ucl
+fi

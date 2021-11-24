@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+while [[ "$PROJECT_DIR" != */MobilePassThrough ]]; do PROJECT_DIR="$(readlink -f "$(dirname "${PROJECT_DIR:-0}")")"; done
+source "$PROJECT_DIR/scripts/utils/common/libs/helpers"
+loadConfig
+
+#####################################################################################################
+#
+#  WARNING!!!!!!!!!!!!!!!! The `e-file` calls in this file have not been properly implemented yet!!!
+#  WARNING!!!!!!!!!!!!!!!! The `e-file` calls in this file have not been properly implemented yet!!!
+#  WARNING!!!!!!!!!!!!!!!! The `e-file` calls in this file have not been properly implemented yet!!!
+#
+# Simple script to install the packages containing the given executable names or file names
+# Usage: `./emerge --executables "curl git wget docker"`
+# Usage: `./emerge --files "/usr/include/{ree,ruby}/ruby.h /usr/share/virtio-win/virtio-win.iso"`
+#####################################################################################################
+
+alias getMissingExecutables="${COMMON_UTILS_TOOLS_DIR}/get-missing-executables"
+alias getMissingFiles="${COMMON_UTILS_TOOLS_DIR}/get-missing-files"
+
+COMMAND="$1"
+SEARCH_MODE="$2"
+WANTED_ITEMS="$3"
+
+function updatePackageInfo() {
+    sudo emerge-webrsync -v
+}
+
+function installPackages() {
+    SEARCH_MODE="$1"
+    WANTED_ITEMS="$2"
+    if ! command -v e-file &> /dev/null; then
+        sudo emerge app-portage/pfl
+    fi
+    PACKAGES_TO_INSTALL=""
+    for CURRENT_ITEM in $WANTED_ITEMS; do
+        if [ "$SEARCH_MODE" = "--executables" ]; then
+            PACKAGE_TO_INSTALL="$(sudo e-file $CURRENT_ITEM ????)" # TODO: FIXME
+        elif [ "$SEARCH_MODE" = "--files" ]; then
+            PACKAGE_TO_INSTALL="$(sudo e-file $CURRENT_ITEM ????)" # TODO: FIXME
+        fi
+        if [ "$?" = "0" ] && [ "$PACKAGE_TO_INSTALL" != "" ]; then
+            PACKAGES_TO_INSTALL+=" $PACKAGE_TO_INSTALL"
+        else
+            STILL_MISSING_ITEMS+=" $CURRENT_ITEM"
+        fi
+    done
+    if [ "$PACKAGES_TO_INSTALL" != "" ]; then
+        sudo emerge $PACKAGES_TO_INSTALL
+    fi
+}
+
+if [ "$SEARCH_MODE" = "--executables" ]; then
+    MISSING_EXECUTABLES="$(getMissingExecutables "$WANTED_ITEMS")"
+    installPackages "$SEARCH_MODE" "$MISSING_EXECUTABLES"
+    MISSING_EXECUTABLES="$(getMissingExecutables "$WANTED_ITEMS")"
+elif [ "$SEARCH_MODE" = "--files" ]; then
+    MISSING_FILES="$(getMissingFiles "$WANTED_ITEMS")"
+    installPackages "$SEARCH_MODE" "$MISSING_FILES"
+    MISSING_FILES="$(getMissingFiles "$WANTED_ITEMS")"
+else
+    echo "ERROR: Invalid mode or no mode at all was speficied!"
+    exit 1
+fi
+if [ "$MISSING_EXECUTABLES" != "" ]; then
+    echo "ERROR: Still missing package providing the following executables: $MISSING_EXECUTABLES"
+fi
+if [ "$MISSING_FILES" != "" ]; then
+    echo "ERROR: Still missing package providing the following files: $MISSING_FILES"
+fi
+if [ "$MISSING_EXECUTABLES" != "" ] && [ "$MISSING_FILES" != "" ]; then
+    exit 1
+fi

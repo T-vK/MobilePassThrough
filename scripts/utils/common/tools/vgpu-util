@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+
+#####################################################################################################
+# Simple tool to manage vGPUs more easily
+# Usage: `./vgpu-tool`
+#####################################################################################################
+
+COMMAND="$1"
+
+# Load required kernel modules
+# returns: 0 on success; 1 on error
+function init() {
+    sudo modprobe kvmgt #sudo modprobe xengt
+    sudo modprobe vfio-mdev
+    sudo modprobe vfio-iommu-type1
+}
+
+# Get currently existing vGPU ID(s)
+# Parameter 1: PCI address of Intel GPU (format: XX:XX.X)
+# Parameter 2 (optional): UUID of the vGPU (Leave empty to list all associated vGPUs)
+# stdout: vGPU UUID(s) (One per line)
+# returns: 0 on success; 1 on error
+function get() {
+    local PCI_ADDRESS="$1"
+    local VGPU_UUID="$2"
+    if [ "$VGPU_UUID" = "" ]; then
+        find "/sys/bus/pci/devices/0000:${PCI_ADDRESS}/" -maxdepth 1 -type d -name "*-*-*-*" -execdir basename {} ';'
+        return 0
+    fi
+    if [ -f "/sys/bus/pci/devices/0000:${PCI_ADDRESS}/${VGPU_UUID}" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Create a vGPU from the given Intel GPU
+# Parameter 1: PCI address of the Intel GPU (format: XX:XX.X)
+# Parameter 2 (optional): UUID to be used for the vGPU
+# stdout: vGPU UUID of the created vGPU
+# returns: 0 on success; 1 on error
+function create() {
+    local IGPU_PCI_ADDRESS="$1"
+    local VGPU_UUID="$2"
+    
+    if [ "$VGPU_UUID" = "" ]; then
+        VGPU_UUID=$(uuid)
+    fi
+    VGPU_TYPES_DIR="/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/*"
+    VGPU_TYPE_DIR=( $VGPU_TYPES_DIR )
+    VGPU_TYPE=$(basename -- "${VGPU_TYPE_DIR}")
+    # For further twaeking read: https://github.com/intel/gvt-linux/wiki/GVTg_Setup_Guide#53-create-vgpu-kvmgt-only
+    if sudo bash -c "echo '${VGPU_UUID}' > '/sys/bus/pci/devices/0000:${IGPU_PCI_ADDRESS}/mdev_supported_types/${VGPU_TYPE}/create'"; then
+        echo "${VGPU_UUID}"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Remove vGPUs from the given Intel GPU
+# Parameter 1: PCI address of the Intel GPU (format: XX:XX.X)
+# Parameter 2 (optional): UUID of the vGPU to remove (leave emtpy to remove all)
+# stdout: vGPU UUID of the removed vGPU
+# returns: 0 on success; 1 on or all  error
+function remove() {
+    local PCI_ADDRESS="$1"
+    local VGPU_UUID="$2"
+    
+    if [ "$VGPU_UUID" = "" ]; then
+        VGPU_UUID="$(get "${PCI_ADDRESS}")"
+    fi
+
+    if [ "$VGPU_UUID" != "" ]; then
+        sudo bash -c "echo 1 > '/sys/bus/pci/devices/0000:${PCI_ADDRESS}/${VGPU_UUID}/remove'" && \
+        echo "${VGPU_UUID}" || return 1
+    fi
+}
+
+if [ "$COMMAND" = "help" ] || [ "$COMMAND" = "--help" ] || [ "$COMMAND" = "-h" ] || [ "$COMMAND" = "" ]; then
+    COMMAND="$2"
+    if [ "$COMMAND" = "" ]; then
+        echo 'vgpu-util [OPTIONS] COMMAND [ARG...]'
+        echo 'vgpu-util [ -h | --help | -v | --version ]'
+        echo ''
+        echo 'A simple tool to manage vGPUs more easily.'
+        echo ''
+        echo 'Options:'
+        echo '  -h, --help       Print usage'
+        echo '  -v, --version    Print version information'
+        echo ''
+        echo 'Commands:'
+        echo '    init      Load required kernel modules'
+        echo '    get       Get currently existing vGPU UUID(s)'
+        echo '    create    Create a vGPU from the given Intel GPU'
+        echo '    remove    Remove vGPUs from the given Intel GPU'
+        echo ''
+        echo 'Examples:'
+        echo '    # List all vGPUs associated with the iGPU with PCI Address 00:02.0'
+        echo '    vgpu-util get 00:02.0'
+        echo ''
+        echo '    # Create vGPU with random ID for the iGPU with PCI address 03:00.0'
+        echo '    vgpu-util create 03:00.0'
+        echo ''
+        echo '    # Create vGPU with ID 224b4ea4-b502-11eb-a58d-9cb6d0942801 for the iGPU with PCI address 00:02.0'
+        echo '    vgpu-util create 00:02.0 224b4ea4-b502-11eb-a58d-9cb6d0942801'
+        echo ''
+        echo '    # Check if vGPUs with ID 224b4ea4-b502-11eb-a58d-9cb6d0942801 is associated with the iGPU with PCI Address 00:02.0'
+        echo '    vgpu-util get 00:02.0 224b4ea4-b502-11eb-a58d-9cb6d0942801'
+        echo ''
+        echo '    # Remove the vGPU with the ID 224b4ea4-b502-11eb-a58d-9cb6d0942801 from iGPU with PCI address 00:02.0'
+        echo '    vgpu-util remove 00:02.0 224b4ea4-b502-11eb-a58d-9cb6d0942801'
+    else
+        if [ "$COMMAND" = "init" ]; then
+            echo 'vgpu-util init'
+            echo ''
+            echo 'Load required kernel modules'
+            echo ''
+            echo 'Examples:'
+            echo '    # Load the kernel modules'
+            echo '    vgpu-util init'
+        elif [ "$COMMAND" = "get" ]; then
+            echo 'vgpu-util get <PCI_ADDRESS> [VGPU_UUID]'
+            echo ''
+            echo 'Get currently existing vGPU ID(s)'
+            echo ''
+            echo 'Parameters:'
+            echo '    PCI_ADDRESS    PCI address of the Intel GPU (format: XX:XX.X)'
+            echo '    VGPU_UUID      UUID of the vGPU'
+            echo ''
+            echo 'Examples:'|| [ "$COMMAND" = "-h"
+            echo '    # List all vGPUs associated with the iGPU with PCI Address 00:02.0'
+            echo '    vgpu-util get 00:02.0'
+            echo ''
+            echo '    # Check if vGPUs with ID 224b4ea4-b502-11eb-a58d-9cb6d0942801 is associated with the iGPU with PCI Address 00:02.0'
+            echo '    vgpu-util get 00:02.0 224b4ea4-b502-11eb-a58d-9cb6d0942801'
+        elif [ "$COMMAND" = "create" ]; then
+            echo 'vgpu-util get <PCI_ADDRESS>'
+            echo ''
+            echo 'Create a vGPU from the given Intel GPU'
+            echo ''
+            echo 'Parameters:'
+            echo '    PCI_ADDRESS    PCI address of the Intel GPU (format: XX:XX.X)'
+            echo '    VGPU_UUID      UUID of the vGPU'
+            echo ''
+            echo 'Examples:'
+            echo '    # Create vGPU with random ID for the iGPU with PCI address 03:00.0'
+            echo '    vgpu-util create 03:00.0'
+            echo ''
+            echo '    # Create vGPU with ID 224b4ea4-b502-11eb-a58d-9cb6d0942801 for the iGPU with PCI address 00:02.0'
+            echo '    vgpu-util create 00:02.0 224b4ea4-b502-11eb-a58d-9cb6d0942801'
+        elif [ "$COMMAND" = "remove" ]; then
+            echo 'vgpu-util get <PCI_ADDRESS>'
+            echo ''
+            echo 'Remove vGPUs from the given Intel GPU'
+            echo ''
+            echo 'Parameters:'
+            echo '    PCI_ADDRESS    PCI address of the Intel GPU (format: XX:XX.X)'
+            echo '    VGPU_UUID      UUID of the vGPU'
+            echo ''
+            echo 'Examples:'
+            echo '    # Remove the vGPU with the ID 224b4ea4-b502-11eb-a58d-9cb6d0942801 from iGPU with PCI address 00:02.0'
+            echo '    vgpu-util remove 00:02.0 224b4ea4-b502-11eb-a58d-9cb6d0942801'
+        fi
+    fi
+elif [ "$COMMAND" = "init" ]; then
+    init "${@:2}"
+elif [ "$COMMAND" = "get" ]; then
+    get "${@:2}"
+elif [ "$COMMAND" = "create" ]; then
+    create "${@:2}"
+elif [ "$COMMAND" = "remove" ]; then
+    remove "${@:2}"
+fi
