@@ -19,7 +19,7 @@ fi
 
 echo "$WINDOWS_10_ISO_URL"
 echo "Making sure the URL comes from a trusted Microsoft domain..."
-if [[ $WINDOWS_10_ISO_URL == https://software-download.microsoft.com/* ]] ; then
+if [[ $WINDOWS_10_ISO_URL == https://*.microsoft.com/* ]] ; then
     echo "Downloading the Windows 10 installation iso..."
     if [ ! -f "${WIN10_IMG_DESTINATION}" ]; then
         wget "${WINDOWS_10_ISO_URL}" -c -O "${WIN10_IMG_DESTINATION}.part"
