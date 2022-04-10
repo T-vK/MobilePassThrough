@@ -18,6 +18,7 @@ alias updatePkgInfo="'${PACKAGE_MANAGER}' update"
 alias getExecPkg="'${PACKAGE_MANAGER}' install --executables"
 alias getFilePkg="'${PACKAGE_MANAGER}' install --files"
 alias addKernelParams="sudo '${KERNEL_PARAM_MANAGER}' add"
+alias applyKernelParamChanges="sudo '${KERNEL_PARAM_MANAGER}' apply"
 alias runtimeKernelHasParams="${COMMON_UTILS_TOOLS_DIR}/runtime-kernel-has-params"
 alias ovmfVbiosPatchSetup="sudo '$COMMON_UTILS_SETUP_DIR/ovmf-vbios-patch-setup'"
 alias buildFakeBatterySsdt="sudo '$COMMON_UTILS_SETUP_DIR/build-fake-battery-ssdt'"
@@ -133,6 +134,11 @@ source "$COMMON_UTILS_LIBS_DIR/gpu-check"
 #if [ "$SUPPORTS_OPTIMUS" = true ]; then
 #    bumblebeeSetup
 #fi
+
+if [ REBOOT_REQUIRED = true ]; then
+    echo "> Appling kernel param changes..."
+    applyKernelParamChanges
+fi
 
 if [ ! -f "${ACPI_TABLES_DIR}/fake-battery.aml" ]; then
     echo "> Building fake ACPI SSDT battery..."
