@@ -40,10 +40,10 @@ else
 fi
 
 if [ ! -d "${THIRDPARTY_DIR}/livecd-tools" ]; then
-    echo "> Downlaoding and installing livecd-tools..."
+    echo "> Downloading and installing livecd-tools..."
     mkdir -p "${THIRDPARTY_DIR}"
     cd "${THIRDPARTY_DIR}"
-    git clone --depth=1 https://github.com/livecd-tools/livecd-tools.git
+    git clone https://github.com/livecd-tools/livecd-tools.git --branch=livecd-tools-28.3 --single-branch livecd-tools
     cd livecd-tools
     sudo make install
     sudo pip3 install urlgrabber
