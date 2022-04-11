@@ -7,6 +7,7 @@ cd "${THIRDPARTY_DIR}"
 
 rm -rf VBiosFinder
 git clone https://github.com/coderobe/VBiosFinder.git
+git checkout c2d764975115de466fdb4963d7773b5bc8468a06
 cd VBiosFinder
 
 wget https://github.com/LongSoft/UEFITool/releases/download/A58/UEFIExtract_NE_A58_linux_x86_64.zip -O ./UEFIExtract.zip
@@ -14,6 +15,7 @@ unzip ./UEFIExtract.zip -d ./3rdparty/
 rm -f ./UEFIExtract.zip
 
 git clone https://github.com/awilliam/rom-parser.git
+git checkout 94a615302f89b94e70446270197e0f5138d678f3
 cd rom-parser
 
 bundle install --path=vendor/bundle
