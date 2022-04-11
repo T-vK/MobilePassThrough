@@ -62,7 +62,7 @@ if [ ! -d "${MBPT_BASE_PATH}/MobilePassThrough" ]; then
     fi
 
     echo "> Downloading the MobilePassThrough project..."
-    git clone -b "unattended-win-install" https://github.com/T-vK/MobilePassThrough.git
+    git clone https://github.com/T-vK/MobilePassThrough.git
 else
     echo "[Skipped] MobilePassThrough appears to have been set up already in a previous boot."
 fi
