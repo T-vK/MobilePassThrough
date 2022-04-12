@@ -775,12 +775,10 @@ function vfioPci() {
             #echo "> Binding dGPU to VFIO driver..."
             #driver bind "${DGPU_PCI_ADDRESS}" "vfio-pci"
             
-            IOMMU_GROUP="$(echo "$LSIOMMU_OUTPUT" | grep "${DGPU_PCI_ADDRESS}" | cut -d' ' -f3)"
-            echo "> IOMMU group for passthrough is ${IOMMU_GROUP}"
-
             LSPCI_OUTPUT="$(sudo ${OPTIRUN_PREFIX}lspci)"
             LSIOMMU_OUTPUT="$(lsiommu)"
             IOMMU_GROUP="$(echo "$LSIOMMU_OUTPUT" | grep "${DGPU_PCI_ADDRESS}" | cut -d' ' -f3)"
+            echo "> IOMMU group for passthrough is ${IOMMU_GROUP}"
             DGPU_IOMMU_GROUP_DEVICES=$(echo "$LSIOMMU_OUTPUT" | grep "IOMMU Group ${IOMMU_GROUP} " | grep -v "PCI bridge" | grep -v "ISA bridge")
             DGPU_FUNCTION_DEVICES=$(echo "$LSIOMMU_OUTPUT" | grep " ${DGPU_PCI_ADDRESS::-1}" | grep -v "PCI bridge" | grep -v "ISA bridge" | grep -v "${DGPU_PCI_ADDRESS}" | grep -v ^$)
             DEVICES_TO_REBIND="$(echo -e "${DGPU_IOMMU_GROUP_DEVICES}\n${DGPU_FUNCTION_DEVICES}" | sort | uniq | grep -v ^$)"

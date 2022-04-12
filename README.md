@@ -229,6 +229,7 @@ Credits to [Cole Robinson](https://blog.wikichoon.com/) for giving me a lot of i
 - Fix RDP
 - Fix Samba sharing
 - Add virt-install version check because 2.2.1 doesn't seem to support the --xml flag
+- Get rid of the `--no-check-certificate` workaround for the win iso download
 
 ### Low prio
 - Add nouveau driver compatibility

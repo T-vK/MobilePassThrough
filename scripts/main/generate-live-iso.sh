@@ -43,8 +43,9 @@ if [ ! -d "${THIRDPARTY_DIR}/livecd-tools" ]; then
     echo "> Downloading and installing livecd-tools..."
     mkdir -p "${THIRDPARTY_DIR}"
     cd "${THIRDPARTY_DIR}"
-    git clone https://github.com/livecd-tools/livecd-tools.git --branch=livecd-tools-28.3 --single-branch livecd-tools
+    git clone https://github.com/livecd-tools/livecd-tools.git #--branch=livecd-tools-28.3 --single-branch livecd-tools
     cd livecd-tools
+    git checkout 9c7f40e7edae3475be9a0b8afd7b390a7ad3bfbc
     sudo make install
     sudo pip3 install urlgrabber
 else
@@ -170,6 +171,8 @@ function flash() {
             sudo umount --force "$mp"
         done <<< "$mps"
     fi
+    echo "aa ${ISO_FILE_MODIFIED}" 
+    echo "bb $DRIVE"
     yes "" | sudo livecd-iso-to-disk --format ext4 --overlay-size-mb 4095 --efi --force --extra-kernel-args "$ALL_KERNEL_PARAMS" "${ISO_FILE_MODIFIED}" "$DRIVE"
 }
 

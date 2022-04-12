@@ -173,8 +173,9 @@ else
     echo "> [Skipped] Helper ISO for auto unattended Windows install, config and driver installation already generated for the current files."
 fi
 
-if [ ! -f "$INSTALL_IMG" ]; then
+if [ ! -f "$INSTALL_IMG" ] || [ $(wc -c <"$INSTALL_IMG") -le 1000000000 ]; then
     echo "Downloading Windows ISO from Microsoft now."
+    rm -f "$INSTALL_IMG"
     downloadWindowsIso "$INSTALL_IMG"
 else
     echo "> [Skipped] Windows ISO has already been downloaded."
