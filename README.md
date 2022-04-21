@@ -230,6 +230,10 @@ Credits to [Cole Robinson](https://blog.wikichoon.com/) for giving me a lot of i
 - Fix Samba sharing
 - Add virt-install version check because 2.2.1 doesn't seem to support the --xml flag
 - Get rid of the `--no-check-certificate` workaround for the win iso download
+- Install remix logo package inside of ISO
+- Disable autostart of install promt when booting Live ISO
+- Add pre-built Live ISO to the GitHub releases
+- Move to Fedora 35
 
 ### Low prio
 - Add nouveau driver compatibility

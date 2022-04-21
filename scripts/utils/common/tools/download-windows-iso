@@ -22,8 +22,12 @@ echo "Making sure the URL comes from a trusted Microsoft domain..."
 if [[ $WINDOWS_10_ISO_URL == https://*.microsoft.com/* ]] ; then
     echo "Downloading the Windows 10 installation iso..."
     if [ ! -f "${WIN10_IMG_DESTINATION}" ]; then
-        wget "${WINDOWS_10_ISO_URL}" --no-check-certificate -c -O "${WIN10_IMG_DESTINATION}.part"
-        mv "${WIN10_IMG_DESTINATION}.part" "${WIN10_IMG_DESTINATION}"
+        if wget "${WINDOWS_10_ISO_URL}" --no-check-certificate -c -O "${WIN10_IMG_DESTINATION}.part"; then
+            mv "${WIN10_IMG_DESTINATION}.part" "${WIN10_IMG_DESTINATION}"
+        else
+            echo "Download failed. Please try again or download the Windows 10 iso manually."
+            exit 1
+        fi
     else
         echo "Skipping download because the Windows ISO already exists: ${WIN10_IMG_DESTINATION}"
     fi

@@ -15,6 +15,9 @@ DRIVE="$2"
 ISO_DOWNLOAD_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/34/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-34-1.2.iso"
 ISO_FILE="${LIVE_ISO_FILES_DIR}/Fedora-Workstation-Live-x86_64-34-1.2.iso"
 ISO_FILE_MODIFIED="${LIVE_ISO_FILES_DIR}/Fedora-Workstation-Live-x86_64-34-1.2.modified.iso"
+#ISO_DOWNLOAD_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/35/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-35-1.2.iso"
+#ISO_FILE="${LIVE_ISO_FILES_DIR}/Fedora-Workstation-Live-x86_64-35-1.2.iso"
+#ISO_FILE_MODIFIED="${LIVE_ISO_FILES_DIR}/Fedora-Workstation-Live-x86_64-35-1.2.modified.iso"
 
 SOURCE_SQUASHFS_IMG="/LiveOS/squashfs.img"
 SQUASHFS_IMG="/tmp/squashfs.img"
@@ -62,9 +65,9 @@ function build_method_1() {
     else
         echo "> [Skipped] Fedora ISO already downloaded."
     fi
-
+    
     sudo rm -rf "${ISO_FILE_MODIFIED}"
-
+    
     echo "> Rebuilding the ISO adding kernel parameters and some files..."
     TMP_SCRIPT="/tmp/tmp-rootfs-setup.sh"
     sudo rm -f "${TMP_SCRIPT}"
@@ -80,8 +83,14 @@ function build_method_1() {
     echo "EOF" >> "${TMP_SCRIPT}"
     echo 'echo "$GET_MBPT_DESKTOP_FILE" > /etc/skel/.config/autostart/mbpt.desktop' >> "${TMP_SCRIPT}"
     echo 'echo "$GET_MBPT_DESKTOP_FILE" > /usr/share/applications/mbpt.desktop' >> "${TMP_SCRIPT}"
+    #echo "touch /etc/skel/.config/autostart/fedora-welcome.desktop" >> "${TMP_SCRIPT}"
+    echo "sed -i 's/^\(Exec=\).*/\1\/usr\/bin\/true/' /usr/share/anaconda/gnome/fedora-welcome.desktop" >> "${TMP_SCRIPT}"
+    #echo "dnf install -y --allowerasing fedora-remix-logos generic-release" >> "${TMP_SCRIPT}"
+    echo "dnf install -y --allowerasing generic-logos generic-release" >> "${TMP_SCRIPT}"
+    echo "dnf install -y fedora-remix-logos" >> "${TMP_SCRIPT}"
+    #echo "dnf remove -y fedora-logos" >> "${TMP_SCRIPT}" # impossbile because of gnome-shell dependency
     sudo chmod +x "${TMP_SCRIPT}"
-
+    
     USERNAME="T-vK" sudo editliveos \
     --builder "T-vK" \
     --noshell \
@@ -92,7 +101,7 @@ function build_method_1() {
     "${ISO_FILE}"
     
     mv "${LIVE_ISO_FILES_DIR}/mbpt-"*.iso "${ISO_FILE_MODIFIED}"
-
+    
     sudo rm -f "${TMP_SCRIPT}"
 }
 
@@ -171,8 +180,6 @@ function flash() {
             sudo umount --force "$mp"
         done <<< "$mps"
     fi
-    echo "aa ${ISO_FILE_MODIFIED}" 
-    echo "bb $DRIVE"
     yes "" | sudo livecd-iso-to-disk --format ext4 --overlay-size-mb 4095 --efi --force --extra-kernel-args "$ALL_KERNEL_PARAMS" "${ISO_FILE_MODIFIED}" "$DRIVE"
 }
 
